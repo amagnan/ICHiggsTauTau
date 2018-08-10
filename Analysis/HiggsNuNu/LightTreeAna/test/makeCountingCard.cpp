@@ -16,6 +16,8 @@ class Syst{
   CLASS_MEMBER(Syst,TFile*,downtfile)
   CLASS_MEMBER(Syst,std::vector<std::string>,procsaffected)
   CLASS_MEMBER(Syst,double,constvalue)
+  CLASS_MEMBER(Syst,double,upconstvalue)
+  CLASS_MEMBER(Syst,double,downconstvalue)
   CLASS_MEMBER(Syst,bool,is_datastat)
   Syst();
 };
@@ -24,6 +26,8 @@ Syst::Syst(){
 };
 
 int main(int argc, char* argv[]){
+  bool do_tau_veto_unc;
+  bool do_b_veto_unc;
   bool blind=true;
   bool do_datatop;
   bool do_qcdfromshape;
@@ -44,18 +48,22 @@ int main(int argc, char* argv[]){
   bool do_run2;
   bool do_4params;
   bool do_1param;
-  double wzqcd_syst;
-  double wzewk_syst;
   double minvarXcut;
   double minvarYcut;
+  double minvarZcut;
+  double maxvarXcut;
+  double maxvarYcut;
+  double maxvarZcut;
   std::string histoToIntegrate;
   po::variables_map vm;
   po::options_description config("Configuration");
   config.add_options()
-    //Input output and config options                                                                                                                   
-    ("input_folder,i",           po::value<std::string>(&indir)->default_value("output_run2ana_161015"))
+    //Input output and config options
+    ("input_folder,i",           po::value<std::string>(&indir)->default_value(""))
     ("outname,o",                po::value<std::string>(&outname)->default_value("vbfhinv.txt"))
     ("blind",                    po::value<bool>(&blind)->default_value(true))
+    ("do_tau_veto_unc",          po::value<bool>(&do_tau_veto_unc)->default_value(false))
+    ("do_b_veto_unc",            po::value<bool>(&do_b_veto_unc)->default_value(false))
     ("do_qcdfromshape,s",        po::value<bool>(&do_qcdfromshape)->default_value(false))
     ("do_qcdfromnumber,q",       po::value<bool>(&do_qcdfromnumber)->default_value(true))
     ("do_ggh,g",                 po::value<bool>(&do_ggh)->default_value(true))
@@ -73,11 +81,13 @@ int main(int argc, char* argv[]){
     ("do_run2",                  po::value<bool>(&do_run2)->default_value(false))
     ("do_4params",               po::value<bool>(&do_4params)->default_value(false))
     ("do_1param",                po::value<bool>(&do_1param)->default_value(true))
-    ("wzqcd_syst",               po::value<double>(&wzqcd_syst)->default_value(1.30))
-    ("wzewk_syst",               po::value<double>(&wzewk_syst)->default_value(1.30))
-    ("minvarXcut",               po::value<double>(&minvarXcut)->default_value(1.0))
-    ("minvarYcut",               po::value<double>(&minvarYcut)->default_value(1.0))
-    ("histoToIntegrate",         po::value<std::string>(&histoToIntegrate)->default_value("alljetsmetnomu_mindphi"))
+    ("minvarXcut",               po::value<double>(&minvarXcut)->default_value(0))
+    ("minvarYcut",               po::value<double>(&minvarYcut)->default_value(0))
+    ("minvarZcut",               po::value<double>(&minvarZcut)->default_value(0))
+    ("maxvarXcut",               po::value<double>(&maxvarXcut)->default_value(14000))
+    ("maxvarYcut",               po::value<double>(&maxvarYcut)->default_value(14000))
+    ("maxvarZcut",               po::value<double>(&maxvarZcut)->default_value(14000))
+    ("histoToIntegrate",         po::value<std::string>(&histoToIntegrate)->default_value(""))
 
 ;
 
@@ -102,13 +112,13 @@ int main(int argc, char* argv[]){
   //Rate to use if qcd not taken from a shape
   double qcdabserr= (channel=="nunu")?14:0;
 
-  if((mass!="110")&&(mass!="125")&&(mass!="150")&&(mass!="200")&&(mass!="300")&&(mass!="400")&&(mass!="500")&&(mass!="600")){
-    std::cout<<"Mass "<<mass<<" not currently supported, please use 110, 125, 200, 300, 400, 500 or 600. Exiting!"<<std::endl;
+  if((mass!="110")&&(mass!="125")&&(mass!="150")&&(mass!="200")&&(mass!="300")&&(mass!="400")&&(mass!="500")&&(mass!="600")&&(mass!="800")&&(mass!="1000")){
+    std::cout<<" -- WARNING: Mass "<<mass<<" not currently supported, please use 110, 125, 200, 300, 400, 500, 600, 800 or 1000. Exiting!"<<std::endl;
     return 1;
   }
-  
+
   std::vector<std::string> sigprocesses;
-    std::vector<std::string> sigprocessesnames;
+  std::vector<std::string> sigprocessesnames;
   std::vector<std::string> sigprocesslatex;
   if (channel=="nunu") {
     sigprocesses.push_back("qqH"+mass);
@@ -119,18 +129,29 @@ int main(int argc, char* argv[]){
     if(do_ggh)sigprocesslatex.push_back("Signal(ggH)");
   }
   std::vector<std::string> bkgprocesses;
-  if (channel=="nunu") {
+  if (channel=="nunu" || channel=="qcd") {
     if (!do_separate_qcdewk) bkgprocesses.push_back("zvvqcd");
     else {
       bkgprocesses.push_back("zvvqcd");
       bkgprocesses.push_back("zvvewk");
     }
   }
+  if (channel=="nunu"||channel=="enu"||channel=="munu"||channel=="taunu") {
+    bkgprocesses.push_back("zllqcd");
+    bkgprocesses.push_back("zllewk");
+  }
   if (channel=="mumu") {
     if (!do_separate_qcdewk) bkgprocesses.push_back("zmumuqcd");
     else {
       bkgprocesses.push_back("zmumuqcd");
       bkgprocesses.push_back("zmumuewk");
+    }
+  }
+  if (channel=="ee") {
+    if (!do_separate_qcdewk) bkgprocesses.push_back("zeeqcd");
+    else {
+      bkgprocesses.push_back("zeeqcd");
+      bkgprocesses.push_back("zeeewk");
     }
   }
   if (!do_separate_qcdewk) {
@@ -149,14 +170,18 @@ int main(int argc, char* argv[]){
   bkgprocesses.push_back("top");
   if( do_run2 || (do_qcdfromshape && channel=="nunu")) bkgprocesses.push_back("qcd");
   bkgprocesses.push_back("vv");
-  
+
   std::vector<std::string> bkgprocesslatex;
-  if (channel=="nunu"){
+  if (channel=="nunu" || channel=="qcd"){
     if (!do_separate_qcdewk) bkgprocesslatex.push_back("$Z\\rightarrow\\nu\\nu$");
     else {
       bkgprocesslatex.push_back("$qcdZ\\rightarrow\\nu\\nu$");
       bkgprocesslatex.push_back("$ewkZ\\rightarrow\\nu\\nu$");
     }
+  }
+  if (channel=="nunu"||channel=="enu"||channel=="munu"||channel=="taunu") {
+    bkgprocesslatex.push_back("$qcdZ\\rightarrow ll$");
+    bkgprocesslatex.push_back("$ewkZ\\rightarrow ll$");
   }
   if (channel=="mumu") {
     if (!do_separate_qcdewk) bkgprocesslatex.push_back("$Z\\rightarrow\\mu\\mu$");
@@ -165,12 +190,19 @@ int main(int argc, char* argv[]){
       bkgprocesslatex.push_back("$ewkZ\\rightarrow\\mu\\mu$");
     }
   }
+  if (channel=="ee") {
+    if (!do_separate_qcdewk) bkgprocesslatex.push_back("$Z\\rightarrow ee$");
+    else {
+      bkgprocesslatex.push_back("$qcdZ\\rightarrow ee$");
+      bkgprocesslatex.push_back("$ewkZ\\rightarrow ee$");
+    }
+  }
   if (!do_separate_qcdewk) {
     bkgprocesslatex.push_back("$W\\rightarrow\\mu\\nu$");
     bkgprocesslatex.push_back("$W\\rightarrow e\\nu$");
     bkgprocesslatex.push_back("$W\\rightarrow\\tau\\nu$");
   }
-  else {    
+  else {
     bkgprocesslatex.push_back("$qcdW\\rightarrow\\mu\\nu$");
     bkgprocesslatex.push_back("$ewkW\\rightarrow\\mu\\nu$");
     bkgprocesslatex.push_back("$qcdW\\rightarrow e\\nu$");
@@ -181,7 +213,7 @@ int main(int argc, char* argv[]){
   bkgprocesslatex.push_back("top");
   if( do_run2 || (do_qcdfromshape && channel=="nunu")) bkgprocesslatex.push_back("QCD multijet");
   bkgprocesslatex.push_back("VV");
-  
+
   //CENTRAL ROOT FILE
   std::cout<<"IMPORTANT NOTE: GMN UNCERTAINTY MUST BE PUT IN MANUALLY!!"<<std::endl;
   std::cout<<"Processing indir: "<<indir<<std::endl;
@@ -194,42 +226,65 @@ int main(int argc, char* argv[]){
   TFile* jerworse=new TFile((indir+"/JERWORSE/"+channel+".root").c_str());
   TFile* uesup=new TFile((indir+"/UESUP/"+channel+".root").c_str());
   TFile* uesdown=new TFile((indir+"/UESDOWN/"+channel+".root").c_str());
-  TFile* eleup=do_run2?0:new TFile((indir+"/ELEEFFUP/"+channel+".root").c_str());
-  TFile* eledown=do_run2?0:new TFile((indir+"/ELEEFFDOWN/"+channel+".root").c_str());
-  TFile* muup=do_run2?0:new TFile((indir+"/MUEFFUP/"+channel+".root").c_str());
-  TFile* mudown=do_run2?0:new TFile((indir+"/MUEFFDOWN/"+channel+".root").c_str());
+  TFile* eleup=new TFile((indir+"/LEPEFF_ELEUP/"+channel+".root").c_str());
+  TFile* eledown=new TFile((indir+"/LEPEFF_ELEDOWN/"+channel+".root").c_str());
+  TFile* gsfup=new TFile((indir+"/LEPEFF_GSFUP/"+channel+".root").c_str());
+  TFile* gsfdown=new TFile((indir+"/LEPEFF_GSFDOWN/"+channel+".root").c_str());
+  TFile* muidup=new TFile((indir+"/LEPEFF_MUIDUP/"+channel+".root").c_str());
+  TFile* muiddown=new TFile((indir+"/LEPEFF_MUIDDOWN/"+channel+".root").c_str());
+  TFile* muisoup=new TFile((indir+"/LEPEFF_MUISOUP/"+channel+".root").c_str());
+  TFile* muisodown=new TFile((indir+"/LEPEFF_MUISODOWN/"+channel+".root").c_str());
+  TFile* mutkup=new TFile((indir+"/LEPEFF_MUTKUP/"+channel+".root").c_str());
+  TFile* mutkdown=new TFile((indir+"/LEPEFF_MUTKDOWN/"+channel+".root").c_str());
   TFile* puup=new TFile((indir+"/PUUP/"+channel+".root").c_str());
   TFile* pudown=new TFile((indir+"/PUDOWN/"+channel+".root").c_str());
+  TFile* btagup=new TFile((indir+"/BTAGUP/"+channel+".root").c_str());
+  TFile* btagdown=new TFile((indir+"/BTAGDOWN/"+channel+".root").c_str());
+  TFile* tauvetoup=new TFile((indir+"/TAUUP/"+channel+".root").c_str());
+  TFile* tauvetodown=new TFile((indir+"/TAUDOWN/"+channel+".root").c_str());
 
   //trigger
-  TFile* trig0up=new TFile((indir+"/TRIG0UP/"+channel+".root").c_str());
-  TFile* trig0down=new TFile((indir+"/TRIG0DOWN/"+channel+".root").c_str());
-  TFile* trig1up=new TFile((indir+"/TRIG1UP/"+channel+".root").c_str());
-  TFile* trig1down=new TFile((indir+"/TRIG1DOWN/"+channel+".root").c_str());
-  TFile* trig2up=new TFile((indir+"/TRIG2UP/"+channel+".root").c_str());
-  TFile* trig2down=new TFile((indir+"/TRIG2DOWN/"+channel+".root").c_str());
+  TFile* trigup=new TFile((indir+"/TRIGUP/"+channel+".root").c_str());
+  TFile* trigdown=new TFile((indir+"/TRIGDOWN/"+channel+".root").c_str());
+  TFile* trig0up=0;//new TFile((indir+"/TRIG0UP/"+channel+".root").c_str());
+  TFile* trig0down=0;//new TFile((indir+"/TRIG0DOWN/"+channel+".root").c_str());
+  TFile* trig1up=0;//new TFile((indir+"/TRIG1UP/"+channel+".root").c_str());
+  TFile* trig1down=0;//new TFile((indir+"/TRIG1DOWN/"+channel+".root").c_str());
+  TFile* trig2up=0;//new TFile((indir+"/TRIG2UP/"+channel+".root").c_str());
+  TFile* trig2down=0;//new TFile((indir+"/TRIG2DOWN/"+channel+".root").c_str());
 
 
   //SYSTEMATICS
   std::vector<Syst> systematics;
 
-  std::vector<std::string> lumi8tevprocsaffected={"ggH110","ggH125","ggH150","ggH200","ggH300","ggH400","ggH500","ggH600","qqH110","qqH125","qqH150","qqH200","qqH300","qqH400","qqH500","qqH600","wg","vv","qcd"};
+  std::vector<std::string> tauveto_procsaffected;
+  tauveto_procsaffected.push_back("wtau");
+  tauveto_procsaffected.push_back("wtauqcd");
+  tauveto_procsaffected.push_back("wtauewk");
+
+
+  std::vector<std::string> lumi8tevprocsaffected={"ggH110","ggH125","ggH150","ggH200","ggH300","ggH400","ggH500","ggH600","ggH800","ggH1000","qqH110","qqH125","qqH150","qqH200","qqH300","qqH400","qqH500","qqH600","qqH800","qqH1000","wg","vv","qcd"};
   if (mcBkgOnly) {
     //if (do_run2) lumi8tevprocsaffected.push_back("zvv");
     //else {
     lumi8tevprocsaffected.push_back("zvv");
     lumi8tevprocsaffected.push_back("zvvewk");
     lumi8tevprocsaffected.push_back("zvvqcd");
+    lumi8tevprocsaffected.push_back("zllewk");
+    lumi8tevprocsaffected.push_back("zllqcd");
       //}
     lumi8tevprocsaffected.push_back("zmumu");
+    lumi8tevprocsaffected.push_back("zee");
     lumi8tevprocsaffected.push_back("wmu");
     lumi8tevprocsaffected.push_back("wel");
     lumi8tevprocsaffected.push_back("wtau");
     lumi8tevprocsaffected.push_back("zmumuqcd");
+    lumi8tevprocsaffected.push_back("zeeqcd");
     lumi8tevprocsaffected.push_back("wmuqcd");
     lumi8tevprocsaffected.push_back("welqcd");
     lumi8tevprocsaffected.push_back("wtauqcd");
     lumi8tevprocsaffected.push_back("zmumuewk");
+    lumi8tevprocsaffected.push_back("zeeewk");
     lumi8tevprocsaffected.push_back("wmuewk");
     lumi8tevprocsaffected.push_back("welewk");
     lumi8tevprocsaffected.push_back("wtauewk");
@@ -241,43 +296,124 @@ int main(int argc, char* argv[]){
     .set_latexname("Luminosity")
     .set_type("constlnN")
     .set_procsaffected(lumi8tevprocsaffected)
-    .set_constvalue(1.062);
+    .set_constvalue(1.025);
 
-  std::vector<std::string> allprocs={"ggH110","ggH125","ggH150","ggH200","ggH300","ggH400","ggH500","ggH600","qqH110","qqH125","qqH1C50","qqH200","qqH300","qqH400","qqH500","qqH600","zvv","zvvewk","zvvqcd","zmumu","zmumuqcd","wmu","wel","wtau","wmuqcd","welqcd","wtauqcd","zmumuewk","wmuewk","welewk","wtauewk","top","qcd","wg","vv"};
-  std::vector<std::string> allprocsnotqcd={"ggH110","ggH125","ggH150","ggH200","ggH300","ggH400","ggH500","ggH600","qqH110","qqH125","qqH150","qqH200","qqH300","qqH400","qqH500","qqH600","zvv","zvvewk","zvvqcd","zmumu","zmumuqcd","wmu","wel","wtau","wmuqcd","welqcd","wtauqcd","zmumuewk","wmuewk","welewk","wtauewk","top","wg","vv"};
-  std::vector<std::string> ggHprocs={"ggH110","ggH125","ggH150","ggH200","ggH300","ggH400","ggH500","ggH600","ggH"};
-  std::vector<std::string> qqHprocs={"qqH110","qqH125","qqH150","qqH200","qqH300","qqH400","qqH500","qqH600","qqH"};
+  std::vector<std::string> allprocs={"ggH110","ggH125","ggH150","ggH200","ggH300","ggH400","ggH500","ggH600","ggH800","ggH1000","qqH110","qqH125","qqH150","qqH200","qqH300","qqH400","qqH500","qqH600","qqH800","qqH1000","zvv","zvvewk","zvvqcd","zllewk","zllqcd","zmumu","zee","zmumuqcd","zeeqcd","wmu","wel","wtau","wmuqcd","welqcd","wtauqcd","zmumuewk","zeeewk","wmuewk","welewk","wtauewk","top","qcd","wg","vv"};
+  std::vector<std::string> allprocsnotz={"ggH110","ggH125","ggH150","ggH200","ggH300","ggH400","ggH500","ggH600","ggH800","ggH1000","qqH110","qqH125","qqH150","qqH200","qqH300","qqH400","qqH500","qqH600","qqH800","qqH1000","wmu","wel","wtau","wmuqcd","welqcd","wtauqcd","wmuewk","welewk","wtauewk","top","qcd","wg","vv"};
+  std::vector<std::string> allprocsnotqcd={"ggH110","ggH125","ggH150","ggH200","ggH300","ggH400","ggH500","ggH600","ggH800","ggH1000","qqH110","qqH125","qqH150","qqH200","qqH300","qqH400","qqH500","qqH600","qqH800","qqH1000","zvv","zvvewk","zvvqcd","zllewk","zllqcd","zmumu","zee","zmumuqcd","zeeqcd","wmu","wel","wtau","wmuqcd","welqcd","wtauqcd","zmumuewk","zeeewk","wmuewk","welewk","wtauewk","top","wg","vv"};
+  std::vector<std::string> ggHprocs={"ggH110","ggH125","ggH150","ggH200","ggH300","ggH400","ggH500","ggH600","ggH800","ggH1000","ggH"};
+  std::vector<std::string> qqHprocs={"qqH110","qqH125","qqH150","qqH200","qqH300","qqH400","qqH500","qqH600","qqH800","qqH1000","qqH"};
+
+  Syst tauveto;
+  tauveto.set_name("CMS_tauveto_unc")
+    .set_latexname("TAU veto SF")
+    .set_type("fromfilelnN")
+    .set_procsaffected(tauveto_procsaffected)
+    .set_uptfile(tauvetoup)
+    .set_downtfile(tauvetodown);
+
   Syst eleeff;
   eleeff.set_name("CMS_eff_e")
     .set_latexname("Electron efficiency")
     .set_type("fromfilelnN")
-    .set_procsaffected(allprocsnotqcd)
+    .set_procsaffected(do_run2?allprocs:allprocsnotqcd)
     .set_uptfile(eleup)
     .set_downtfile(eledown);
+  //HACK
+  if (channel=="nunu"){ 
+    eleeff.set_name("CMS_SR_eff_e")
+          .set_latexname("Veto Electron efficiency");
+  }
 
-  Syst mueff;
-  mueff.set_name("CMS_eff_m")
-    .set_latexname("Muon efficiency")
+  Syst gsfeff;
+  gsfeff.set_name("CMS_eff_gsf")
+    .set_latexname("Electron GSF efficiency")
     .set_type("fromfilelnN")
-    .set_procsaffected(allprocsnotqcd)
-    .set_uptfile(muup)
-    .set_downtfile(mudown);
+    .set_procsaffected(do_run2?allprocs:allprocsnotqcd)
+    .set_uptfile(gsfup)
+    .set_downtfile(gsfdown);
+  //HACK
+  if (channel=="nunu"){ 
+    gsfeff.set_name("CMS_SR_eff_gsf")
+          .set_latexname("Veto Electron GSF efficiency");
+  }
+
+  Syst muideff;
+  muideff.set_name("CMS_eff_id_m")
+    .set_latexname("Muon ID efficiency")
+    .set_type("fromfilelnN")
+    .set_procsaffected(do_run2?allprocs:allprocsnotqcd)
+    .set_uptfile(muidup)
+    .set_downtfile(muiddown);
+  //HACK
+  if (channel=="nunu"){ 
+    muideff.set_name("CMS_SR_eff_id_m")
+           .set_latexname("Veto Muon ID efficiency");
+  }
+
+  Syst muisoeff;
+  muisoeff.set_name("CMS_eff_iso_m")
+    .set_latexname("Muon ISO efficiency")
+    .set_type("fromfilelnN")
+    .set_procsaffected(do_run2?allprocs:allprocsnotqcd)
+    .set_uptfile(muisoup)
+    .set_downtfile(muisodown);
+  //HACK
+  if (channel=="nunu"){ 
+    muisoeff.set_name("CMS_SR_eff_iso_m")
+            .set_latexname("Veto Muon ISO efficiency");
+  }
+
+  Syst mutkeff;
+  mutkeff.set_name("CMS_eff_tk_m")
+    .set_latexname("Muon TK efficiency")
+    .set_type("fromfilelnN")
+    .set_procsaffected(do_run2?allprocs:allprocsnotqcd)
+    .set_uptfile(mutkup)
+    .set_downtfile(mutkdown);
+  //HACK
+  if (channel=="nunu"){ 
+    mutkeff.set_name("CMS_SR_eff_tk_m")
+           .set_latexname("Veto Muon TK efficiency");
+  }
 
   Syst jes;
   jes.set_name("CMS_scale_j")
     .set_latexname("Jet energy scale")
     .set_type("fromfilelnN")
-    .set_procsaffected(do_run2?allprocs:allprocsnotqcd)
+    .set_procsaffected(do_run2?allprocsnotz:allprocsnotqcd)
     .set_uptfile(jesup)
     .set_downtfile(jesdown);
+  //HACK
+  if (channel=="ee"||channel=="mumu"||channel=="enu"||channel=="munu"){
+    jes.set_procsaffected({"top","qcd","vv"});
+  } else if (channel=="nunu"){
+    jes.set_procsaffected({"qqH125","ggH125","top","qcd","vv"});
+  } //then editing by hand a 2% flat unc on W processes in CRs
 
   Syst jer;
   jer.set_name("CMS_res_j")
     .set_latexname("Jet energy resolution")
     .set_type("fromfilelnN")
-    .set_procsaffected(do_run2?allprocs:allprocsnotqcd)
+    .set_procsaffected(do_run2?allprocsnotz:allprocsnotqcd)
     .set_uptfile(jerbetter)
     .set_downtfile(jerworse);
+  //HACK
+  if (channel=="ee"||channel=="mumu"){
+    jer.set_procsaffected({"top","qcd","vv"});
+  } else if (channel=="enu"){
+    jer.set_procsaffected({"welqcd","welewk","wtauqcd","wtauewk","top","vv"});
+  } else if (channel=="nunu"){//removing qcd for now
+    jer.set_procsaffected({"ggH110","ggH125","ggH150","ggH200","ggH300","ggH400","ggH500","ggH600","ggH800","ggH1000","qqH110","qqH125","qqH150","qqH200","qqH300","qqH400","qqH500","qqH600","qqH800","qqH1000","wmu","wel","wtau","wmuqcd","welqcd","wtauqcd","wmuewk","welewk","wtauewk","top","wg","vv"});
+  }
+
+  Syst btag;
+  btag.set_name("CMS_btag_j")
+    .set_latexname("BTAG SF")
+    .set_type("fromfilelnN")
+    .set_procsaffected(do_run2?allprocs:allprocsnotqcd)
+    .set_uptfile(btagup)
+    .set_downtfile(btagdown);
 
   Syst ues;
   ues.set_name("CMS_scale_met")
@@ -294,6 +430,25 @@ int main(int argc, char* argv[]){
     .set_procsaffected(do_run2?allprocs:allprocsnotqcd)
     .set_uptfile(puup)
     .set_downtfile(pudown);
+
+  //HACK
+  Syst trig;
+  trig.set_name("CMS_VBFHinv_trigweight")
+    .set_latexname("Trig weight")
+    .set_type("constlnN")
+//     .set_type("fromfilelnN")
+    .set_procsaffected(do_run2?allprocs:allprocsnotqcd)
+    .set_constvalue(1.02);
+//     .set_uptfile(trigup)
+//     .set_downtfile(trigdown);
+
+  Syst eletrig;
+  eletrig.set_name("CMS_VBFHinv_eletrigweight")
+    .set_latexname("Ele Trig weight")
+    .set_type("fromfilelnN")
+    .set_procsaffected(do_run2?allprocs:allprocsnotqcd)
+    .set_uptfile(trigup)
+    .set_downtfile(trigdown);
 
   Syst trig0;
   trig0.set_name("CMS_VBFHinv_trig0weight")
@@ -324,29 +479,27 @@ int main(int argc, char* argv[]){
     .set_latexname("$Z\\rightarrow\\nu\\nu$ MC stat.")
     .set_type("datadrivenMCstatlnN")
     .set_procsaffected({"zvvqcd"});
-
   if (mcBkgOnly) zvvmcstat.set_type("fromMCstatlnN");
 
   Syst wzratioqcd;
   wzratioqcd.set_name("CMS_WZQCD_ratio_from_theory")
     .set_latexname("W/Z from theory")
     .set_type("constlnN")
-    .set_constvalue(wzqcd_syst)
-    .set_procsaffected({"zmumuqcd","zvvqcd"});
+    .set_constvalue(1.125)
+    .set_procsaffected({"zeeqcd","zmumuqcd","zvvqcd"});
 
   Syst wzratioewk;
   wzratioewk.set_name("CMS_WZEWK_ratio_from_theory")
     .set_latexname("W/Z from theory")
     .set_type("constlnN")
-    .set_constvalue(wzewk_syst)
-    .set_procsaffected({"zmumuewk","zvvewk"});
+    .set_constvalue(1.125)
+    .set_procsaffected({"zeeewk","zmumuewk","zvvewk"});
 
   Syst zvvewkmcstat;
   zvvewkmcstat.set_name("CMS_VBFHinv_zvv_ewk_norm")
     .set_latexname("$ewkZ\\rightarrow\\nu\\nu$ MC stat.")
     .set_type("datadrivenMCstatlnN")
     .set_procsaffected({"zvvewk"});
-
   if (mcBkgOnly) zvvewkmcstat.set_type("fromMCstatlnN");
 
   Syst zvvqcdmcstat;
@@ -354,24 +507,43 @@ int main(int argc, char* argv[]){
     .set_latexname("$qcdZ\\rightarrow\\nu\\nu$ MC stat.")
     .set_type("datadrivenMCstatlnN")
     .set_procsaffected({"zvvqcd"});
-
   if (mcBkgOnly) zvvqcdmcstat.set_type("fromMCstatlnN");
 
   Syst zmumumcstat;
   zmumumcstat.set_name("CMS_VBFHinv_zmumu_norm")
     .set_latexname("$Z\\rightarrow\\mu\\mu$ MC stat.")
     .set_type("fromMCstatlnN")
-    .set_procsaffected({"zmumuqcd"});
+    .set_procsaffected({"zmumu"});
+
   Syst zmumuqcdmcstat;
   zmumuqcdmcstat.set_name("CMS_VBFHinv_zmumu_qcd_norm")
     .set_latexname("$qcdZ\\rightarrow\\mu\\mu$ MC stat.")
     .set_type("fromMCstatlnN")
     .set_procsaffected({"zmumuqcd"});
+
   Syst zmumuewkmcstat;
   zmumuewkmcstat.set_name("CMS_VBFHinv_zmumu_ewk_norm")
     .set_latexname("ewk$Z\\rightarrow\\mu\\mu$ MC stat.")
     .set_type("fromMCstatlnN")
     .set_procsaffected({"zmumuewk"});
+
+  Syst zeemcstat;
+  zeemcstat.set_name("CMS_VBFHinv_zee_norm")
+    .set_latexname("$Z\\rightarrow ee$ MC stat.")
+    .set_type("fromMCstatlnN")
+    .set_procsaffected({"zee"});
+
+  Syst zeeqcdmcstat;
+  zeeqcdmcstat.set_name("CMS_VBFHinv_zee_qcd_norm")
+    .set_latexname("$qcdZ\\rightarrow ee$ MC stat.")
+    .set_type("fromMCstatlnN")
+    .set_procsaffected({"zeeqcd"});
+
+  Syst zeeewkmcstat;
+  zeeewkmcstat.set_name("CMS_VBFHinv_zee_ewk_norm")
+    .set_latexname("ewk$Z\\rightarrow ee$ MC stat.")
+    .set_type("fromMCstatlnN")
+    .set_procsaffected({"zeeewk"});
 
   Syst zvvdatastat;
   zvvdatastat.set_name("CMS_VBFHinv_zvv_stat")
@@ -394,18 +566,44 @@ int main(int argc, char* argv[]){
     .set_type("datadrivenMCstatlnN")
     .set_procsaffected({"welqcd"});
   if (mcBkgOnly) welmcstat.set_type("fromMCstatlnN");
+
   Syst welqcdmcstat;
   welqcdmcstat.set_name("CMS_VBFHinv_wel_qcd_norm")
     .set_latexname("qcd$W\\rightarrow e\\nu$ MC stat.")
     .set_type("datadrivenMCstatlnN")
     .set_procsaffected({"welqcd"});
   if (mcBkgOnly) welqcdmcstat.set_type("fromMCstatlnN");
+  //HACK
+  if (channel=="enu"){
+    welqcdmcstat.set_name("CMS_VBFHinv_WECR_wel_qcd_norm");
+  } else if (channel=="munu"){
+    welqcdmcstat.set_name("CMS_VBFHinv_WMCR_wel_qcd_norm");
+  } else if (channel=="ee"){
+    welqcdmcstat.set_name("CMS_VBFHinv_ZEECR_wel_qcd_norm");
+  } else if (channel=="mumu"){
+    welqcdmcstat.set_name("CMS_VBFHinv_ZMMCR_wel_qcd_norm");
+  } else if (channel=="nunu"){
+    welqcdmcstat.set_name("CMS_VBFHinv_SR_wel_qcd_norm");
+  }
+
   Syst welewkmcstat;
   welewkmcstat.set_name("CMS_VBFHinv_wel_ewk_norm")
     .set_latexname("ewk$W\\rightarrow e\\nu$ MC stat.")
     .set_type("datadrivenMCstatlnN")
     .set_procsaffected({"welewk"});
   if (mcBkgOnly) welewkmcstat.set_type("fromMCstatlnN");
+  //HACK
+  if (channel=="enu"){
+    welewkmcstat.set_name("CMS_VBFHinv_WECR_wel_ewk_norm");
+  } else if (channel=="munu"){
+    welewkmcstat.set_name("CMS_VBFHinv_WMCR_wel_ewk_norm");
+  } else if (channel=="ee"){
+    welewkmcstat.set_name("CMS_VBFHinv_ZEECR_wel_ewk_norm");
+  } else if (channel=="mumu"){
+    welewkmcstat.set_name("CMS_VBFHinv_ZMMCR_wel_ewk_norm");
+  } else if (channel=="nunu"){
+    welewkmcstat.set_name("CMS_VBFHinv_SR_wel_ewk_norm");
+  }
 
   Syst weldatastat;
   weldatastat.set_name("CMS_VBFHinv_wel_stat")
@@ -420,18 +618,44 @@ int main(int argc, char* argv[]){
     .set_type("datadrivenMCstatlnN")
     .set_procsaffected({"wmuqcd"});
   if (mcBkgOnly) wmumcstat.set_type("fromMCstatlnN");
+
   Syst wmuqcdmcstat;
   wmuqcdmcstat.set_name("CMS_VBFHinv_wmu_qcd_norm")
     .set_latexname("qcd$W\\rightarrow \\mu\\nu$ MC stat.")
     .set_type("datadrivenMCstatlnN")
     .set_procsaffected({"wmuqcd"});
   if (mcBkgOnly) wmuqcdmcstat.set_type("fromMCstatlnN");
+  //HACK
+  if (channel=="enu"){
+    wmuqcdmcstat.set_name("CMS_VBFHinv_WECR_wmu_qcd_norm");
+  } else if (channel=="munu"){
+    wmuqcdmcstat.set_name("CMS_VBFHinv_WMCR_wmu_qcd_norm");
+  } else if (channel=="ee"){
+    wmuqcdmcstat.set_name("CMS_VBFHinv_ZEECR_wmu_qcd_norm");
+  } else if (channel=="mumu"){
+    wmuqcdmcstat.set_name("CMS_VBFHinv_ZMMCR_wmu_qcd_norm");
+  } else if (channel=="nunu"){
+    wmuqcdmcstat.set_name("CMS_VBFHinv_SR_wmu_qcd_norm");
+  }
+
   Syst wmuewkmcstat;
   wmuewkmcstat.set_name("CMS_VBFHinv_wmu_ewk_norm")
     .set_latexname("ewk$W\\rightarrow \\mu\\nu$ MC stat.")
     .set_type("datadrivenMCstatlnN")
     .set_procsaffected({"wmuewk"});
   if (mcBkgOnly) wmuewkmcstat.set_type("fromMCstatlnN");
+  //HACK
+  if (channel=="enu"){
+    wmuewkmcstat.set_name("CMS_VBFHinv_WECR_wmu_ewk_norm");
+  } else if (channel=="munu"){
+    wmuewkmcstat.set_name("CMS_VBFHinv_WMCR_wmu_ewk_norm");
+  } else if (channel=="ee"){
+    wmuewkmcstat.set_name("CMS_VBFHinv_ZEECR_wmu_ewk_norm");
+  } else if (channel=="mumu"){
+    wmuewkmcstat.set_name("CMS_VBFHinv_ZMMCR_wmu_ewk_norm");
+  } else if (channel=="nunu"){
+    wmuewkmcstat.set_name("CMS_VBFHinv_SR_wmu_ewk_norm");
+  }
 
   Syst wmudatastat;
   wmudatastat.set_name("CMS_VBFHinv_wmu_stat")
@@ -460,18 +684,44 @@ int main(int argc, char* argv[]){
     .set_type("datadrivenMCstatlnN")
     .set_procsaffected({"wtauqcd"});
   if (mcBkgOnly) wtaumcstat.set_type("fromMCstatlnN");
+
   Syst wtauqcdmcstat;
   wtauqcdmcstat.set_name("CMS_VBFHinv_wtau_qcd_norm")
     .set_latexname("qcd$W\\rightarrow \\tau\\nu$ MC stat.")
     .set_type("datadrivenMCstatlnN")
     .set_procsaffected({"wtauqcd"});
   if (mcBkgOnly) wtauqcdmcstat.set_type("fromMCstatlnN");
+  //HACK
+  if (channel=="enu"){
+    wtauqcdmcstat.set_name("CMS_VBFHinv_WECR_wtau_qcd_norm");
+  } else if (channel=="munu"){
+    wtauqcdmcstat.set_name("CMS_VBFHinv_WMCR_wtau_qcd_norm");
+  } else if (channel=="ee"){
+    wtauqcdmcstat.set_name("CMS_VBFHinv_ZEECR_wtau_qcd_norm");
+  } else if (channel=="mumu"){
+    wtauqcdmcstat.set_name("CMS_VBFHinv_ZMMCR_wtau_qcd_norm");
+  } else if (channel=="nunu"){
+    wtauqcdmcstat.set_name("CMS_VBFHinv_SR_wtau_qcd_norm");
+  }
+
   Syst wtauewkmcstat;
   wtauewkmcstat.set_name("CMS_VBFHinv_wtau_ewk_norm")
     .set_latexname("ewk$W\\rightarrow \\tau\\nu$ MC stat.")
     .set_type("datadrivenMCstatlnN")
     .set_procsaffected({"wtauewk"});
   if (mcBkgOnly) wtauewkmcstat.set_type("fromMCstatlnN");
+  //HACK
+  if (channel=="enu"){
+    wtauewkmcstat.set_name("CMS_VBFHinv_WECR_wtau_ewk_norm");
+  } else if (channel=="munu"){
+    wtauewkmcstat.set_name("CMS_VBFHinv_WMCR_wtau_ewk_norm");
+  } else if (channel=="ee"){
+    wtauewkmcstat.set_name("CMS_VBFHinv_ZEECR_wtau_ewk_norm");
+  } else if (channel=="mumu"){
+    wtauewkmcstat.set_name("CMS_VBFHinv_ZMMCR_wtau_ewk_norm");
+  } else if (channel=="nunu"){
+    wtauewkmcstat.set_name("CMS_VBFHinv_SR_wtau_ewk_norm");
+  }
 
   Syst wtaudatastat;
   wtaudatastat.set_name("CMS_VBFHinv_wtau_stat")
@@ -486,6 +736,18 @@ int main(int argc, char* argv[]){
     .set_type("datadrivenMCstatlnN")
     .set_procsaffected({"top"});
   if (mcBkgOnly) topmcstat.set_type("fromMCstatlnN");
+  //HACK
+  if (channel=="enu"){
+    topmcstat.set_name("CMS_VBFHinv_WECR_top_norm");
+  } else if (channel=="munu"){
+    topmcstat.set_name("CMS_VBFHinv_WMCR_top_norm");
+  } else if (channel=="ee"){
+    topmcstat.set_name("CMS_VBFHinv_ZEECR_top_norm");
+  } else if (channel=="mumu"){
+    topmcstat.set_name("CMS_VBFHinv_ZMMCR_top_norm");
+  } else if (channel=="nunu"){
+    topmcstat.set_name("CMS_VBFHinv_SR_top_norm");
+  }
 
   Syst topmcsfunc;
   topmcsfunc.set_name("CMS_VBFHinv_top_extrapfacunc")
@@ -505,7 +767,19 @@ int main(int argc, char* argv[]){
   mctopmcstat.set_name("CMS_VBFHinv_top_norm")
     .set_latexname("TOP FROM MC SHOULD NOT APPEAR IN FINAL RESULT")
     .set_type("fromMCstatlnN")
-    .set_procsaffected({"top"});  
+    .set_procsaffected({"top"});
+  //HACK
+  if (channel=="enu"){
+    mctopmcstat.set_name("CMS_VBFHinv_WECR_top_norm");
+  } else if (channel=="munu"){
+    mctopmcstat.set_name("CMS_VBFHinv_WMCR_top_norm");
+  } else if (channel=="ee"){
+    mctopmcstat.set_name("CMS_VBFHinv_ZEECR_top_norm");
+  } else if (channel=="mumu"){
+    mctopmcstat.set_name("CMS_VBFHinv_ZMMCR_top_norm");
+  } else if (channel=="nunu"){
+    mctopmcstat.set_name("CMS_VBFHinv_SR_top_norm");
+  }
 
   Syst qqHmcstat;
   qqHmcstat.set_name("CMS_VBFHinv_qqH_norm")
@@ -519,12 +793,20 @@ int main(int argc, char* argv[]){
     .set_type("fromMCstatlnN")
     .set_procsaffected(ggHprocs);
 
-  Syst ggHqcdscale;
-  ggHqcdscale.set_name("QCDscale_ggH2in")
-    .set_latexname("ggH QCD scale")
+  Syst ggH2inqcdscale;
+  ggH2inqcdscale.set_name("QCDscale_ggH2in")
+    .set_latexname("ggH2in QCD scale")
     .set_type("constlnN")
     .set_procsaffected(ggHprocs)
-    .set_constvalue(1.553);
+    .set_constvalue(1.45);
+
+  Syst ggHqcdscale;
+  ggHqcdscale.set_name("QCDscale_YR4_ggH")
+    .set_latexname("ggH QCD scale")
+    .set_type("updownconstlnN")
+    .set_procsaffected(ggHprocs)
+    .set_upconstvalue(0.046)
+    .set_downconstvalue(0.067);
 
   //UPDATE TO BE MASS DEPENDENT
   Syst ggHpdf;
@@ -532,7 +814,7 @@ int main(int argc, char* argv[]){
     .set_latexname("ggH pdf")
     .set_type("constlnN")
     .set_procsaffected(ggHprocs)
-    .set_constvalue(1.031);
+    .set_constvalue(1.032);
 
   Syst ggHUEPS;
   ggHUEPS.set_name("UEPS")
@@ -546,6 +828,16 @@ int main(int argc, char* argv[]){
     .set_latexname(do_run2?"QCD MC stat.":"QCD FROM MC SHOULD NOT APPEAR IN FINAL RESULT")
     .set_type("fromMCstatlnN")
     .set_procsaffected({"qcd"});
+  //HACK
+  if (channel=="enu"){
+    qcdmcstat.set_name("CMS_VBFHinv_WECR_qcd_norm");
+  } else if (channel=="munu"){
+    qcdmcstat.set_name("CMS_VBFHinv_WMCR_qcd_norm");
+  } else if (channel=="nunu"){
+    qcdmcstat.set_name("CMS_VBFHinv_SR_qcd_norm");
+    qcdmcstat.set_type("constlnN");
+    qcdmcstat.set_constvalue(1.42);
+  }
 
 
   Syst qcdextrap;
@@ -553,7 +845,7 @@ int main(int argc, char* argv[]){
     .set_latexname("QCD control region extrapolation")
     .set_procsaffected({"qcd"})
     .set_type("constlnN")
-    .set_constvalue(2.0);
+    .set_constvalue(1.5);
 
 
 
@@ -561,21 +853,77 @@ int main(int argc, char* argv[]){
   qcdfromnumerr.set_name("CMS_VBFHinv_qcd_norm")
     .set_latexname("QCD normalisation")
     .set_type("qcdfromnumberlnN")
-    .set_procsaffected({"qcd"});  
+    .set_procsaffected({"qcd"});
+  //HACK
+  if (channel=="enu"){
+    qcdfromnumerr.set_name("CMS_VBFHinv_WECR_qcd_norm");
+  } else if (channel=="munu"){
+    qcdfromnumerr.set_name("CMS_VBFHinv_WMCR_qcd_norm");
+  } else if (channel=="nunu"){
+    qcdfromnumerr.set_name("CMS_VBFHinv_SR_qcd_norm");
+  }
 
   Syst qqHqcdscale;
   qqHqcdscale.set_name("QCDscale_qqH")
     .set_latexname("VBF QCD scale")
-    .set_type("constlnN")
+    .set_type("updownconstlnN")
     .set_procsaffected(qqHprocs);
-  if(mass=="110")qqHqcdscale.set_constvalue(1.004);
-  if(mass=="125")qqHqcdscale.set_constvalue(1.004);
-  if(mass=="150")qqHqcdscale.set_constvalue(1.004);
-  if(mass=="200")qqHqcdscale.set_constvalue(1.004);
-  if(mass=="300")qqHqcdscale.set_constvalue(1.004);
-  if(mass=="400")qqHqcdscale.set_constvalue(1.004);
-  if(mass=="500")qqHqcdscale.set_constvalue(1.004);
-  if(mass=="600")qqHqcdscale.set_constvalue(1.004);
+  if(mass=="110"){
+    qqHqcdscale.set_upconstvalue(0.004);
+    qqHqcdscale.set_downconstvalue(0.003);
+  }
+  if(mass=="125"){
+    qqHqcdscale.set_upconstvalue(0.004);
+    qqHqcdscale.set_downconstvalue(0.003);
+  }
+  if(mass=="150"){
+    qqHqcdscale.set_upconstvalue(0.004);
+    qqHqcdscale.set_downconstvalue(0.003);
+  }
+  if(mass=="200"){
+    qqHqcdscale.set_upconstvalue(0.004);
+    qqHqcdscale.set_downconstvalue(0.003);
+  }
+  if(mass=="300"){
+    qqHqcdscale.set_upconstvalue(0.004);
+    qqHqcdscale.set_downconstvalue(0.003);
+  }
+  if(mass=="400"){
+    qqHqcdscale.set_upconstvalue(0.004);
+    qqHqcdscale.set_downconstvalue(0.003);
+  }
+  if(mass=="500"){
+    qqHqcdscale.set_upconstvalue(0.004);
+    qqHqcdscale.set_downconstvalue(0.003);
+  }
+  if(mass=="600"){
+    qqHqcdscale.set_upconstvalue(0.004);
+    qqHqcdscale.set_downconstvalue(0.003);
+  }
+  if(mass=="800"){
+    qqHqcdscale.set_upconstvalue(0.004);
+    qqHqcdscale.set_downconstvalue(0.003);
+  }
+  if(mass=="1000"){
+    qqHqcdscale.set_upconstvalue(0.004);
+    qqHqcdscale.set_downconstvalue(0.003);
+  }
+
+  Syst qqHqcdscaleaccept;
+  qqHqcdscaleaccept.set_name("QCDscale_accept_qqH")
+  .set_latexname("VBF QCD scale acceptance")
+  .set_type("constlnN")
+  .set_procsaffected(qqHprocs);
+  if(mass=="110")qqHqcdscaleaccept.set_constvalue(1.02);
+  if(mass=="125")qqHqcdscaleaccept.set_constvalue(1.02);
+  if(mass=="150")qqHqcdscaleaccept.set_constvalue(1.02);
+  if(mass=="200")qqHqcdscaleaccept.set_constvalue(1.02);
+  if(mass=="300")qqHqcdscaleaccept.set_constvalue(1.02);
+  if(mass=="400")qqHqcdscaleaccept.set_constvalue(1.02);
+  if(mass=="500")qqHqcdscaleaccept.set_constvalue(1.02);
+  if(mass=="600")qqHqcdscaleaccept.set_constvalue(1.02);
+  if(mass=="800")qqHqcdscaleaccept.set_constvalue(1.02);
+  if(mass=="1000")qqHqcdscaleaccept.set_constvalue(1.02);
 
   Syst qqHpdf;
   qqHpdf.set_name("pdf_qqbar")
@@ -590,19 +938,49 @@ int main(int argc, char* argv[]){
   if(mass=="400")qqHpdf.set_constvalue(1.021);
   if(mass=="500")qqHpdf.set_constvalue(1.021);
   if(mass=="600")qqHpdf.set_constvalue(1.021);
+  if(mass=="800")qqHpdf.set_constvalue(1.021);
+  if(mass=="1000")qqHpdf.set_constvalue(1.021);
+
+  Syst qqHpdfaccept;
+  qqHpdfaccept.set_name("pdf_accept_qqbar")
+  .set_latexname("VBF pdf acceptance")
+  .set_type("constlnN")
+  .set_procsaffected(qqHprocs);
+  if(mass=="110")qqHpdfaccept.set_constvalue(1.01);
+  if(mass=="125")qqHpdfaccept.set_constvalue(1.01);
+  if(mass=="150")qqHpdfaccept.set_constvalue(1.01);
+  if(mass=="200")qqHpdfaccept.set_constvalue(1.01);
+  if(mass=="300")qqHpdfaccept.set_constvalue(1.01);
+  if(mass=="400")qqHpdfaccept.set_constvalue(1.01);
+  if(mass=="500")qqHpdfaccept.set_constvalue(1.01);
+  if(mass=="600")qqHpdfaccept.set_constvalue(1.01);
+  if(mass=="800")qqHpdfaccept.set_constvalue(1.01);
+  if(mass=="1000")qqHpdfaccept.set_constvalue(1.01);
 
   Syst vvmcstat;
   vvmcstat.set_name("CMS_VBFHinv_vv_norm")
     .set_latexname("VV MC stat.")
     .set_type("fromMCstatlnN")
-    .set_procsaffected({"vv"});  
+    .set_procsaffected({"vv"});
+  //HACK
+  if (channel=="enu"){
+    vvmcstat.set_name("CMS_VBFHinv_WECR_vv_norm");
+  } else if (channel=="munu"){
+    vvmcstat.set_name("CMS_VBFHinv_WMCR_vv_norm");
+  } else if (channel=="ee"){
+    vvmcstat.set_name("CMS_VBFHinv_ZEECR_vv_norm");
+  } else if (channel=="mumu"){
+    vvmcstat.set_name("CMS_VBFHinv_ZMMCR_vv_norm");
+  } else if (channel=="nunu"){
+    vvmcstat.set_name("CMS_VBFHinv_SR_vv_norm");
+  }
 
   Syst vvxsunc;
   vvxsunc.set_name("CMS_VBFHinv_vv_xsunc")
     .set_latexname("VV cross-section")
     .set_type("constlnN")
     .set_procsaffected({"vv"})
-    .set_constvalue(1.007);
+    .set_constvalue(1.15);
 
   Syst wxsunc;
   wxsunc.set_name("CMS_VBFHinv_W_xsunc")
@@ -615,7 +993,14 @@ int main(int argc, char* argv[]){
   zxsunc.set_name("CMS_VBFHinv_Z_xsunc")
     .set_latexname("Z cross-section")
     .set_type("constlnN")
-    .set_procsaffected({"zvv","zmumu"})
+    .set_procsaffected({"zvv","zmumu","zee"})
+    .set_constvalue(1.1);
+
+  Syst topreweight;
+  topreweight.set_name("CMS_VBFHinv_top_reweight")
+    .set_latexname("Top pT reweight")
+    .set_type("constlnN")
+    .set_procsaffected({"top"})
     .set_constvalue(1.1);
 
   Syst topxsunc;
@@ -638,25 +1023,58 @@ int main(int argc, char* argv[]){
     .set_procsaffected({"zvv"})
     .set_constvalue(1.2);
 
+
+  Syst zjets_SR_norm;
+  zjets_SR_norm.set_name("ZJets_SR_norm")
+    .set_latexname("DY+jets QCD and Zll EWK in SR normalisation")
+    .set_procsaffected({"zllqcd","zllewk"})
+    .set_type("constlnN")
+    .set_constvalue(1.2);
+
+  if (do_tau_veto_unc) {
+    systematics.push_back(tauveto);
+  }
+  if (do_b_veto_unc) {
+    systematics.push_back(btag);
+  }
+
   systematics.push_back(lumi8tev);
-  if (!do_run2)  systematics.push_back(eleeff);
-  if (!do_run2) systematics.push_back(mueff);
-  //if (!do_run2) 
+  //HACK
+  if (channel!="munu" && channel!="mumu"){
+    systematics.push_back(eleeff);
+    systematics.push_back(gsfeff);
+  }
+  //HACK
+  if (channel!="enu" && channel!="ee"){
+    systematics.push_back(muideff);
+    systematics.push_back(muisoeff);
+    systematics.push_back(mutkeff);
+  }
+
+  //if (!do_run2)
   systematics.push_back(jes);
   //if (!do_run2) 
-  systematics.push_back(jer);
+  //HACK
+  //systematics.push_back(jer);
   if(do_ues){
     //if (!do_run2) 
     systematics.push_back(ues);
   }
   //if (!do_run2) 
   systematics.push_back(pu);
-  systematics.push_back(trig0);
-  systematics.push_back(trig1);
-  systematics.push_back(trig2);
-  if (channel=="nunu" || channel=="mumu") {
+
+  //HACK
+  if (channel=="nunu") systematics.push_back(trig);
+  else if (channel=="ee" || channel=="enu") systematics.push_back(eletrig);
+//   if (channel!="ee" && channel != "enu") systematics.push_back(trig);
+//   else systematics.push_back(eletrig);
+  //systematics.push_back(trig0);
+  //systematics.push_back(trig1);
+  //systematics.push_back(trig2);
+
+  if (channel=="nunu" || channel=="mumu" || channel=="ee" || channel=="qcd") {
     //if (mcBkgOnly) systematics.push_back(zxsunc);
-    if (channel=="nunu") {
+    if (channel=="nunu" || channel=="qcd") {
       if (!do_separate_qcdewk) systematics.push_back(zvvmcstat);
       else {
 	systematics.push_back(zvvewkmcstat);
@@ -670,7 +1088,14 @@ int main(int argc, char* argv[]){
 	systematics.push_back(zmumuewkmcstat);
       }
     }
-    if (channel=="mumu" || channel=="nunu") {
+    if (channel=="ee") {
+      if (!do_separate_qcdewk) systematics.push_back(zeemcstat);
+      else {
+        systematics.push_back(zeeqcdmcstat);
+        systematics.push_back(zeeewkmcstat);
+      }
+    }
+    if (channel=="ee" || channel=="mumu" || channel=="nunu" || channel=="qcd") {
       systematics.push_back(wzratioqcd);
       systematics.push_back(wzratioewk);
     }
@@ -685,15 +1110,23 @@ int main(int argc, char* argv[]){
     systematics.push_back(wtaumcstat);
   }
   else {
-    systematics.push_back(wmuqcdmcstat);
-    systematics.push_back(wmuewkmcstat);
-    systematics.push_back(welqcdmcstat);
-    systematics.push_back(welewkmcstat);
-    systematics.push_back(wtauqcdmcstat);
-    systematics.push_back(wtauewkmcstat);
+    //HACK
+    if (channel!="enu"){
+      systematics.push_back(wmuqcdmcstat);
+      systematics.push_back(wmuewkmcstat);
+    }
+    //HACK
+    if (channel!="munu"){
+      systematics.push_back(welqcdmcstat);
+      systematics.push_back(welewkmcstat);
+      systematics.push_back(wtauqcdmcstat);
+      systematics.push_back(wtauewkmcstat);
+    }
   }
-  systematics.push_back(wtauideff);
-  if (channel=="taunu") systematics.push_back(wtaujetmetextrap);
+  if (channel=="taunu") {
+    systematics.push_back(wtauideff);
+    systematics.push_back(wtaujetmetextrap);
+  }
   if (!mcBkgOnly) {
     systematics.push_back(wmudatastat);
     systematics.push_back(weldatastat);
@@ -707,9 +1140,15 @@ int main(int argc, char* argv[]){
     systematics.push_back(mctopmcstat);
     if (!mcBkgOnly) systematics.push_back(topmcsfunc);
   }
-  if (mcBkgOnly) systematics.push_back(topxsunc);
+  if (mcBkgOnly) {
+    systematics.push_back(topxsunc);
+    systematics.push_back(topreweight);
+  }
   if(do_run2 || do_qcdfromshape){
-    systematics.push_back(qcdmcstat);
+    //HACK
+    if (channel!="ee" && channel!="mumu"){
+      systematics.push_back(qcdmcstat);
+    }
     if (channel=="nunu") systematics.push_back(qcdextrap);
   }
   if(!do_run2 && do_qcdfromnumber)systematics.push_back(qcdfromnumerr);
@@ -719,15 +1158,18 @@ int main(int argc, char* argv[]){
   if (channel=="nunu"){
     systematics.push_back(qqHmcstat);
     systematics.push_back(qqHqcdscale);
+    systematics.push_back(qqHqcdscaleaccept);
     systematics.push_back(qqHpdf);
+    systematics.push_back(qqHpdfaccept);
+    systematics.push_back(zjets_SR_norm);
     if(do_ggh){
       systematics.push_back(ggHmcstat);
+      systematics.push_back(ggH2inqcdscale);
       systematics.push_back(ggHqcdscale);
       systematics.push_back(ggHpdf);
       systematics.push_back(ggHUEPS);
     }
   }
-  
 
   std::cout<<"Setting up datacard header.."<<std::endl;
   std::ofstream datacard;
@@ -746,6 +1188,7 @@ int main(int argc, char* argv[]){
   else std::cout<<"Getting observation"<<std::endl;
   //OBSERVATION
   TDirectory* dir;
+  int dataobs;
   if(!blind){
     std::string dirname="data_obs";
     if(dirname==""){
@@ -762,25 +1205,36 @@ int main(int argc, char* argv[]){
     }
     dir->cd();
     double rate = 0;
-    if (histoToIntegrate.find(":")==histoToIntegrate.npos) {
+    size_t nD = std::count(histoToIntegrate.begin(),histoToIntegrate.end(),':');
+    if (nD==0) {
       TH1F* histo = (TH1F*)dir->Get(histoToIntegrate.c_str());
       if (!histo) {
 	std::cout<<"Error: No histogram " << histoToIntegrate << " found for "<<dirname<<" exiting"<<std::endl; 
 	return 1;
       }
-      rate=histo->Integral(histo->FindBin(minvarXcut), histo->GetNbinsX() + 1);
+      rate=histo->Integral(histo->FindBin(minvarXcut), histo->FindBin(maxvarXcut));
     }
-    else {
+    else if (nD==1){
       TH2F* histo = (TH2F*)dir->Get(histoToIntegrate.c_str());
       if (!histo) {
 	std::cout<<"Error: No histogram " << histoToIntegrate << " found for "<<dirname<<" exiting"<<std::endl;
         return 1;
       }
-      rate=histo->Integral(histo->GetXaxis()->FindBin(minvarXcut), histo->GetNbinsX() + 1, histo->GetYaxis()->FindBin(minvarYcut), histo->GetNbinsY() + 1);
+      rate=histo->Integral(histo->GetXaxis()->FindBin(minvarXcut), histo->GetXaxis()->FindBin(maxvarXcut), histo->GetYaxis()->FindBin(minvarYcut), histo->GetYaxis()->FindBin(maxvarYcut));
+
+    }
+    else if (nD==2){
+      TH3F* histo = (TH3F*)dir->Get(histoToIntegrate.c_str());
+      if (!histo) {
+	std::cout<<"Error: No histogram " << histoToIntegrate << " found for "<<dirname<<" exiting"<<std::endl;
+        return 1;
+      }
+      rate=histo->Integral(histo->GetXaxis()->FindBin(minvarXcut), histo->GetXaxis()->FindBin(maxvarXcut), histo->GetYaxis()->FindBin(minvarYcut),histo->GetYaxis()->FindBin(maxvarYcut), histo->GetZaxis()->FindBin(minvarZcut),histo->GetZaxis()->FindBin(maxvarZcut));
 
     }
     datacard<<"observation "<<rate<<std::endl;
     std::cout<<"observation "<<rate<<std::endl;
+    dataobs = (int)rate;
   }
   else{
     double totalbkgs=0;
@@ -800,19 +1254,24 @@ int main(int argc, char* argv[]){
       }
       dir->cd();
       double rate = 0;
-      if (histoToIntegrate.find(":")==histoToIntegrate.npos) {
+      size_t nD = std::count(histoToIntegrate.begin(),histoToIntegrate.end(),':');
+      if (nD==0){
 	TH1F* histo = (TH1F*)dir->Get(histoToIntegrate.c_str());
-	rate=histo->Integral(histo->FindBin(minvarXcut), histo->GetNbinsX() + 1);
-      } else {
+	rate=histo->Integral(histo->FindBin(minvarXcut), histo->FindBin(maxvarXcut));
+      } else if (nD==1){
 	TH2F* histo = (TH2F*)dir->Get(histoToIntegrate.c_str());
-	rate=histo->Integral(histo->GetXaxis()->FindBin(minvarXcut), histo->GetNbinsX() + 1, histo->GetYaxis()->FindBin(minvarYcut), histo->GetNbinsY() + 1);
+	rate=histo->Integral(histo->GetXaxis()->FindBin(minvarXcut), histo->GetXaxis()->FindBin(maxvarXcut), histo->GetYaxis()->FindBin(minvarYcut), histo->GetYaxis()->FindBin(maxvarYcut));
+      }
+      else if (nD==2){
+	TH3F* histo = (TH3F*)dir->Get(histoToIntegrate.c_str());
+	rate=histo->Integral(histo->GetXaxis()->FindBin(minvarXcut), histo->GetXaxis()->FindBin(maxvarXcut), histo->GetYaxis()->FindBin(minvarYcut),histo->GetYaxis()->FindBin(maxvarYcut), histo->GetZaxis()->FindBin(minvarZcut),histo->GetZaxis()->FindBin(maxvarZcut));
       }
       totalbkgs+=rate;
     }
     if(do_qcdfromnumber) totalbkgs+=qcdrate;
     datacard<<"observation "<<totalbkgs<<std::endl;
     std::cout<<"observation "<<totalbkgs<<std::endl;
-
+    dataobs = (int)totalbkgs;
   }
 
   //Bin information and process names
@@ -855,6 +1314,7 @@ int main(int argc, char* argv[]){
   datacard<<"rate\t\t";
   TH1F* histo[100];
   TH2F* histo2D[100];
+  TH3F* histo3D[100];
   for(unsigned iProc=0;iProc<(sigprocesses.size()+bkgprocesses.size());iProc++){
     std::string dirname;
     if(iProc<sigprocesses.size())dirname=sigprocesses[iProc];
@@ -872,26 +1332,38 @@ int main(int argc, char* argv[]){
     }
     dir->cd();
     double rate = 0;
-    if (histoToIntegrate.find(":")==histoToIntegrate.npos) {
+    size_t nD = std::count(histoToIntegrate.begin(),histoToIntegrate.end(),':');
+    if (nD==0){
       histo[iProc] = (TH1F*)dir->Get(histoToIntegrate.c_str());
       std::cout << dirname << " overflows: " << histo[iProc]->GetBinContent(histo[iProc]->GetNbinsX()+1) << std::endl;
-      rate=Integral(histo[iProc],histo[iProc]->FindBin(minvarXcut),histo[iProc]->GetNbinsX()+1);
+      rate=Integral(histo[iProc],histo[iProc]->FindBin(minvarXcut),histo[iProc]->FindBin(maxvarXcut));
       if (rate != rate) {
-	rate=Integral(histo[iProc],histo[iProc]->FindBin(minvarXcut),histo[iProc]->GetNbinsX());
-	if (rate!=rate){
-	  std::cout << " -- Problem, nan in sample " << dirname << " setting rate to 0." << std::endl;
-	  rate=0;
-	}
+	//rate=Integral(histo[iProc],histo[iProc]->FindBin(minvarXcut),histo[iProc]->GetNbinsX());
+	//if (rate!=rate){
+	std::cout << " -- Problem, nan in sample " << dirname << " setting rate to 0." << std::endl;
+	rate=0;
+	//}
       }
-    } else {
+    } else if (nD==1){
       histo2D[iProc] = (TH2F*)dir->Get(histoToIntegrate.c_str());
-      rate=Integral(histo2D[iProc],histo2D[iProc]->GetXaxis()->FindBin(minvarXcut),histo2D[iProc]->GetNbinsX()+1,histo2D[iProc]->GetYaxis()->FindBin(minvarYcut),histo2D[iProc]->GetNbinsY()+1);
+      rate=Integral(histo2D[iProc],histo2D[iProc]->GetXaxis()->FindBin(minvarXcut),histo2D[iProc]->GetXaxis()->FindBin(maxvarXcut),histo2D[iProc]->GetYaxis()->FindBin(minvarYcut),histo2D[iProc]->GetYaxis()->FindBin(maxvarYcut));
       if (rate != rate) {
-	rate=Integral(histo2D[iProc],histo2D[iProc]->GetXaxis()->FindBin(minvarXcut),histo2D[iProc]->GetNbinsX(),histo2D[iProc]->GetYaxis()->FindBin(minvarYcut),histo2D[iProc]->GetNbinsY());
-	if (rate!=rate){
-	  std::cout << " -- Problem, nan in sample " << dirname << " setting rate to 0." << std::endl;
-	  rate=0;
-	}
+	//rate=Integral(histo2D[iProc],histo2D[iProc]->GetXaxis()->FindBin(minvarXcut),histo2D[iProc]->GetNbinsX(),histo2D[iProc]->GetYaxis()->FindBin(minvarYcut),histo2D[iProc]->GetNbinsY());
+	//if (rate!=rate){
+	std::cout << " -- Problem, nan in sample " << dirname << " setting rate to 0." << std::endl;
+	rate=0;
+	//}
+      }
+    }
+    else if (nD==2){
+      histo3D[iProc] = (TH3F*)dir->Get(histoToIntegrate.c_str());
+      rate=Integral(histo3D[iProc],histo3D[iProc]->GetXaxis()->FindBin(minvarXcut),histo3D[iProc]->GetXaxis()->FindBin(maxvarXcut),histo3D[iProc]->GetYaxis()->FindBin(minvarYcut),histo3D[iProc]->GetYaxis()->FindBin(maxvarYcut),histo3D[iProc]->GetZaxis()->FindBin(minvarZcut),histo3D[iProc]->GetZaxis()->FindBin(maxvarZcut));
+      if (rate != rate) {
+	//rate=Integral(histo2D[iProc],histo2D[iProc]->GetXaxis()->FindBin(minvarXcut),histo2D[iProc]->GetNbinsX(),histo2D[iProc]->GetYaxis()->FindBin(minvarYcut),histo2D[iProc]->GetNbinsY());
+	//if (rate!=rate){
+	std::cout << " -- Problem, nan in sample " << dirname << " setting rate to 0." << std::endl;
+	rate=0;
+	//}
       }
     }
     if(iProc<sigprocesses.size())sigcentralrates.push_back(rate);
@@ -952,6 +1424,34 @@ int main(int argc, char* argv[]){
 	  if(verbose)std::cout<<"    "<<dirname<<" "<<procsysttotal[dirname]<<" "<<procstattotal[dirname]<<std::endl;
 	}
 
+	if(systematics[iSyst].type()=="updownconstlnN"){
+    datacard<<"\t"<<1-systematics[iSyst].downconstvalue()<<"/"<<1+systematics[iSyst].upconstvalue();
+	  //store for total error calculation
+    double error=(systematics[iSyst].upconstvalue()>systematics[iSyst].downconstvalue())?systematics[iSyst].upconstvalue():systematics[iSyst].downconstvalue();
+
+	  double abserror=0;
+	  if(iProc<sigprocesses.size()){
+	    abserror=error*sigcentralrates[iProc];
+	    if(systematics[iSyst].is_datastat())thissystsigstat+=abserror;
+	    else thissystsigsyst+=abserror;
+	  }
+	  else{
+	    abserror=error*bkgcentralrates[iProc-sigprocesses.size()];
+	    if(systematics[iSyst].is_datastat())thissystbkgstat+=abserror;
+	    else thissystbkgsyst+=abserror;
+	  }
+
+	  if(systematics[iSyst].is_datastat()){
+	    if(procstattotal.find(dirname)==procstattotal.end()) procstattotal[dirname]=error;
+	    else procstattotal[dirname]=sqrt(pow(procstattotal[dirname],2)+pow(error,2));
+	  }
+	  else{
+	    if(procsysttotal.find(dirname)==procsysttotal.end()) procsysttotal[dirname]=error;
+	    else procsysttotal[dirname]=sqrt(pow(procsysttotal[dirname],2)+pow(error,2));
+	  }
+	  if(verbose)std::cout<<"    "<<dirname<<" "<<procsysttotal[dirname]<<" "<<procstattotal[dirname]<<std::endl;
+	}
+
 	//from file lnN
 	else if(systematics[iSyst].type()=="fromfilelnN"){
 	  TDirectory* updir;
@@ -975,16 +1475,25 @@ int main(int argc, char* argv[]){
 	  TH1F* downhisto=0;
 	  TH2F* uphisto2D=0;
 	  TH2F* downhisto2D=0;
-	  if (histoToIntegrate.find(":")==histoToIntegrate.npos) {
+	  TH3F* uphisto3D=0;
+	  TH3F* downhisto3D=0;
+	  size_t nD = std::count(histoToIntegrate.begin(),histoToIntegrate.end(),':');
+	  if (nD==0) {
 	    uphisto = (TH1F*)updir->Get(histoToIntegrate.c_str());
-	    uprate=Integral(uphisto,uphisto->FindBin(minvarXcut),uphisto->GetNbinsX()+1);
+	    uprate=Integral(uphisto,uphisto->FindBin(minvarXcut),uphisto->FindBin(maxvarXcut));
 	    downhisto = (TH1F*)downdir->Get(histoToIntegrate.c_str());
-	    downrate=Integral(downhisto,downhisto->FindBin(minvarXcut),downhisto->GetNbinsX()+1);
-	  } else {
+	    downrate=Integral(downhisto,downhisto->FindBin(minvarXcut),downhisto->FindBin(maxvarXcut));
+	  } else if (nD==1){
 	    uphisto2D = (TH2F*)updir->Get(histoToIntegrate.c_str());
-	    uprate=Integral(uphisto2D,uphisto2D->GetXaxis()->FindBin(minvarXcut),uphisto2D->GetNbinsX()+1,uphisto2D->GetYaxis()->FindBin(minvarYcut),uphisto2D->GetNbinsY()+1);
+	    uprate=Integral(uphisto2D,uphisto2D->GetXaxis()->FindBin(minvarXcut),uphisto2D->GetXaxis()->FindBin(maxvarXcut),uphisto2D->GetYaxis()->FindBin(minvarYcut),uphisto2D->GetYaxis()->FindBin(maxvarYcut));
 	    downhisto2D = (TH2F*)downdir->Get(histoToIntegrate.c_str());
-	    downrate=Integral(downhisto2D,downhisto2D->GetXaxis()->FindBin(minvarXcut),downhisto2D->GetNbinsX()+1,downhisto2D->GetYaxis()->FindBin(minvarYcut),downhisto2D->GetNbinsY()+1);
+	    downrate=Integral(downhisto2D,downhisto2D->GetXaxis()->FindBin(minvarXcut),downhisto2D->GetXaxis()->FindBin(maxvarXcut),downhisto2D->GetYaxis()->FindBin(minvarYcut),downhisto2D->GetYaxis()->FindBin(maxvarYcut));
+	  }
+	  else if (nD==2){
+	    uphisto3D = (TH3F*)updir->Get(histoToIntegrate.c_str());
+	    uprate=Integral(uphisto3D,uphisto3D->GetXaxis()->FindBin(minvarXcut),uphisto3D->GetXaxis()->FindBin(maxvarXcut),uphisto3D->GetYaxis()->FindBin(minvarYcut),uphisto3D->GetYaxis()->FindBin(maxvarYcut),uphisto3D->GetZaxis()->FindBin(minvarZcut),uphisto3D->GetZaxis()->FindBin(maxvarZcut));
+	    downhisto3D = (TH3F*)downdir->Get(histoToIntegrate.c_str());
+	    downrate=Integral(downhisto3D,downhisto3D->GetXaxis()->FindBin(minvarXcut),downhisto3D->GetXaxis()->FindBin(maxvarXcut),downhisto3D->GetYaxis()->FindBin(minvarYcut),downhisto3D->GetYaxis()->FindBin(maxvarYcut),downhisto3D->GetZaxis()->FindBin(minvarZcut),downhisto3D->GetZaxis()->FindBin(maxvarZcut));
 	  }
 
 	  double centralrate;
@@ -1001,19 +1510,26 @@ int main(int argc, char* argv[]){
 	    std::cout << " Process " << dirname << ", systematics " << systematics[iSyst].name() << " is more than 20%: down - central - up = "
 		      << downrate << " - " << centralrate << " - " << uprate << std::endl;
 	    std::cout << "Diff entries: " ;
-	    if (histoToIntegrate.find(":")==histoToIntegrate.npos){
+	    size_t nD = std::count(histoToIntegrate.begin(),histoToIntegrate.end(),':');
+	    if (nD==0){
 	      std::cout << downhisto->GetEntries() 
 			<< " - " << histo[iProc]->GetEntries() << "(" << histo[iProc]->Integral() << ")"
 			<< " - " << uphisto->GetEntries() << std::endl;
 	    }
-	    else {
+	    else if (nD==1){
 	      std::cout << downhisto2D->GetEntries() 
 			<< " - " << histo2D[iProc]->GetEntries()
 			<< " - " << uphisto2D->GetEntries() << std::endl;
 
 	    }
+	    else if (nD==2){
+	      std::cout << downhisto3D->GetEntries() 
+			<< " - " << histo3D[iProc]->GetEntries()
+			<< " - " << uphisto3D->GetEntries() << std::endl;
+
+	    }
 	    std::cout << "Diff overflows: " ;
-	    if (histoToIntegrate.find(":")==histoToIntegrate.npos){
+	    if (nD==0){
 	      std::cout << downhisto->GetBinContent(0) 
 			<< " - " << histo[iProc]->GetBinContent(0)
 			<< " - " << uphisto->GetBinContent(0) << std::endl
@@ -1021,7 +1537,7 @@ int main(int argc, char* argv[]){
 			<< " - " << histo[iProc]->GetBinContent(histo[iProc]->GetNbinsX()+1)
 			<< " - " << uphisto->GetBinContent(uphisto->GetNbinsX()+1) << std::endl;
 	    }
-	    else {
+	    else if (nD==1){
 	      std::cout << downhisto2D->GetBinContent(0,0) 
 			<< " - " << histo2D[iProc]->GetBinContent(0,0)
 			<< " - " << uphisto2D->GetBinContent(0,0) << std::endl
@@ -1030,12 +1546,49 @@ int main(int argc, char* argv[]){
 			<< " - " << uphisto2D->GetBinContent(uphisto2D->GetNbinsX()+1,uphisto2D->GetNbinsY()+1) << std::endl;
 
 	    }
+	    else if (nD==2){
+	      std::cout << downhisto3D->GetBinContent(0,0) 
+			<< " - " << histo3D[iProc]->GetBinContent(0,0)
+			<< " - " << uphisto3D->GetBinContent(0,0) << std::endl
+			<< downhisto3D->GetBinContent(downhisto3D->GetNbinsX()+1,downhisto3D->GetNbinsY()+1) 
+			<< " - " << histo3D[iProc]->GetBinContent(histo3D[iProc]->GetNbinsX()+1,histo3D[iProc]->GetNbinsY()+1)
+			<< " - " << uphisto3D->GetBinContent(uphisto3D->GetNbinsX()+1,uphisto3D->GetNbinsY()+1) << std::endl;
+
+	    }
 	  }
 
-	  if (downlnnfac==downlnnfac && downlnnfac>0) datacard<<"\t"<<downlnnfac;
-	  else datacard<<"\t-";
-	  if (uplnnfac==uplnnfac && uplnnfac>0) datacard<<"/"<<uplnnfac;
-	  else datacard<<"/-";
+	  // Brutal hack to avoid pathological behaviour of JES and JER unc
+// 	  if ( systematics[iSyst].name()=="CMS_scale_j" ||
+//          systematics[iSyst].name()=="CMS_res_j" ) {
+//       if (downlnnfac==downlnnfac && downlnnfac>0 && downlnnfac < 0.9) {
+//         downlnnfac=0.9;
+//       }
+//       else if (downlnnfac==downlnnfac && downlnnfac>0 && downlnnfac > 1.1) {
+//         downlnnfac=1.1;
+//       }
+//       if (uplnnfac==uplnnfac && uplnnfac>0 && uplnnfac > 1.1) {
+//         uplnnfac=1.1;
+//       }
+//       else if (uplnnfac==uplnnfac && uplnnfac>0 && uplnnfac < 0.9) {
+//         uplnnfac=0.9;
+//       }
+//     }
+	  /*if ( systematics[iSyst].name()=="CMS_VBFHinv_trigweight" ) {
+	    if (channel=="ee" || channel=="enu") {
+	    downlnnfac=-1;
+	    }
+	    if (channel=="ee" || channel=="enu") {
+	    uplnnfac=-1;
+	    }
+	    }*/
+
+	  if ( !(downlnnfac==downlnnfac && downlnnfac>0 && uplnnfac==uplnnfac && uplnnfac>0) ) datacard<<"\t-";
+	  else {
+	    if (downlnnfac==downlnnfac && downlnnfac>0) datacard<<"\t"<<downlnnfac;
+	    else datacard<<"\t-";
+	    if (uplnnfac==uplnnfac && uplnnfac>0) datacard<<"/"<<uplnnfac;
+	    else datacard<<"/-";
+    }
 
 	  double error=(fabs(1-uplnnfac)+fabs(1-downlnnfac))/2;
 
@@ -1067,14 +1620,29 @@ int main(int argc, char* argv[]){
 	  TDirectory* dir=nunu->GetDirectory(dirname.c_str());	  
 	  dir->cd();
 	  double error = 0;
-	  if (histoToIntegrate.find(":")==histoToIntegrate.npos) {
+	  size_t nD = std::count(histoToIntegrate.begin(),histoToIntegrate.end(),':');
+	  if (nD==0) {
 	    TH1F* histo = (TH1F*)dir->Get(histoToIntegrate.c_str());
-	    error=Error(histo,histo->FindBin(minvarXcut),histo->GetNbinsX()+1);
-	    if (error!=error) error=Error(histo,histo->FindBin(minvarXcut),histo->GetNbinsX());
-	  } else {
+	    error=Error(histo,histo->FindBin(minvarXcut),histo->FindBin(maxvarXcut));
+	    if (error!=error) {
+	      std::cout << " Warning, nan error for " << dirname << std::endl;
+	      error = 0;
+	    }
+	  } else if (nD==1){
 	    TH2F* histo = (TH2F*)dir->Get(histoToIntegrate.c_str());
-	    error=Error(histo,histo->GetXaxis()->FindBin(minvarXcut),histo->GetNbinsX()+1,histo->GetYaxis()->FindBin(minvarYcut), histo->GetNbinsY() + 1);
-	    if (error!=error) error=Error(histo,histo->GetXaxis()->FindBin(minvarXcut),histo->GetNbinsX(),histo->GetYaxis()->FindBin(minvarYcut), histo->GetNbinsY());
+	    error=Error(histo,histo->GetXaxis()->FindBin(minvarXcut),histo->GetXaxis()->FindBin(maxvarXcut),histo->GetYaxis()->FindBin(minvarYcut), histo->GetYaxis()->FindBin(maxvarYcut));
+	    if (error!=error){
+	      std::cout << " Warning, nan error for " << dirname << std::endl;
+	      error = 0;
+	    } 
+	  }
+	  else if (nD==2){
+	    TH3F* histo = (TH3F*)dir->Get(histoToIntegrate.c_str());
+	    error=Error(histo,histo->GetXaxis()->FindBin(minvarXcut),histo->GetXaxis()->FindBin(maxvarXcut),histo->GetYaxis()->FindBin(minvarYcut), histo->GetYaxis()->FindBin(maxvarYcut),histo->GetZaxis()->FindBin(minvarZcut), histo->GetZaxis()->FindBin(maxvarZcut));
+	    if (error!=error){
+	      std::cout << " Warning, nan error for " << dirname << std::endl;
+	      error = 0;
+	    } 
 	  }
 
 	  double centralrate;
@@ -1235,26 +1803,48 @@ int main(int argc, char* argv[]){
       printf("  %s: %.1f +- %.1f (stat.) +- %.1f (syst.)\n",bkgprocesses[iProc].c_str(),bkgcentralrates[iProc],procstattotal[bkgprocesses[iProc]]*bkgcentralrates[iProc],procsysttotal[bkgprocesses[iProc]]*bkgcentralrates[iProc]);
     }  
   }
-  else{
-    std::cout<<"\\begin{tabular}{|l|c|}"<<std::endl;
-    std::cout<<"\\hline"<<std::endl;
-    std::cout<<"Background       & $N_{est} \\pm (stat) \\pm (syst)$ \\\\"<<std::endl;
-    std::cout<<"\\hline"<<std::endl;
-    for(unsigned iProc=0;iProc<(bkgprocesses.size());iProc++){
-      printf("%s&$%.1f \\pm %.1f \\pm %.1f$\\\\\n",bkgprocesslatex[iProc].c_str(),bkgcentralrates[iProc],procstattotal[bkgprocesses[iProc]]*bkgcentralrates[iProc],procsysttotal[bkgprocesses[iProc]]*bkgcentralrates[iProc]);
-    }  
-    if(do_qcdfromnumber){
-      std::cout<<"QCD multijet &$"<<qcdrate<<"\\pm 0 \\pm"<<qcdabserr<<"$\\\\"<<std::endl;
-    }
-    std::cout<<"\\hline"<<std::endl;
-    printf("Total Background &$%.1f \\pm %.1f \\pm %.1f $\\\\\n",bkgtotal,totalbkgstat,totalbkgsyst);
-    std::cout<<"\\hline"<<std::endl;
-    for(unsigned iProc=0;iProc<(sigprocesses.size());iProc++){
-      printf("%s &$%.1f \\pm %.1f \\pm %.1f $\\\\\n",sigprocesslatex[iProc].c_str(),sigcentralrates[iProc],procstattotal[sigprocesses[iProc]]*sigcentralrates[iProc],procsysttotal[sigprocesses[iProc]]*sigcentralrates[iProc]);
-    }  
-    std::cout<<"\\hline"<<std::endl;
-    std::cout<<"\\end{tabular}"<<std::endl;
+//   else{
+//     std::cout<<"\\begin{tabular}{|l|c|}"<<std::endl;
+//     std::cout<<"\\hline"<<std::endl;
+//     std::cout<<"Background       & $N_{est} \\pm (stat) \\pm (syst)$ \\\\"<<std::endl;
+//     std::cout<<"\\hline"<<std::endl;
+//     for(unsigned iProc=0;iProc<(bkgprocesses.size());iProc++){
+//       printf("%s&$%.1f \\pm %.1f \\pm %.1f$\\\\\n",bkgprocesslatex[iProc].c_str(),bkgcentralrates[iProc],procstattotal[bkgprocesses[iProc]]*bkgcentralrates[iProc],procsysttotal[bkgprocesses[iProc]]*bkgcentralrates[iProc]);
+//     }  
+//     if(do_qcdfromnumber){
+//       std::cout<<"QCD multijet &$"<<qcdrate<<"\\pm 0 \\pm"<<qcdabserr<<"$\\\\"<<std::endl;
+//     }
+//     std::cout<<"\\hline"<<std::endl;
+//     printf("Total Background &$%.1f \\pm %.1f \\pm %.1f $\\\\\n",bkgtotal,totalbkgstat,totalbkgsyst);
+//     std::cout<<"\\hline"<<std::endl;
+//     for(unsigned iProc=0;iProc<(sigprocesses.size());iProc++){
+//       printf("%s &$%.1f \\pm %.1f \\pm %.1f $\\\\\n",sigprocesslatex[iProc].c_str(),sigcentralrates[iProc],procstattotal[sigprocesses[iProc]]*sigcentralrates[iProc],procsysttotal[sigprocesses[iProc]]*sigcentralrates[iProc]);
+//     }  
+//     std::cout<<"\\hline"<<std::endl;
+//     std::cout<<"\\end{tabular}"<<std::endl;
+//   }
+else{
+  std::cout<<"\\begin{tabular}{|l|c|}"<<std::endl;
+  std::cout<<"\\hline"<<std::endl;
+  std::cout<<"Background       & $N_{est} \\pm (stat+syst)$ \\\\"<<std::endl;
+  std::cout<<"\\hline"<<std::endl;
+  for(unsigned iProc=0;iProc<(bkgprocesses.size());iProc++){
+    printf("%s&$%.1f \\pm %.1f$\\\\\n",bkgprocesslatex[iProc].c_str(),bkgcentralrates[iProc],procsysttotal[bkgprocesses[iProc]]*bkgcentralrates[iProc]);
+  }  
+  if(do_qcdfromnumber){
+    std::cout<<"QCD multijet &$"<<qcdrate<<" \\pm"<<qcdabserr<<"$\\\\"<<std::endl;
   }
+  std::cout<<"\\hline"<<std::endl;
+  printf("Total Background &$%.1f \\pm %.1f $\\\\\n",bkgtotal,totalbkgsyst);
+  std::cout<<"\\hline"<<std::endl;
+  for(unsigned iProc=0;iProc<(sigprocesses.size());iProc++){
+    printf("%s &$%.1f \\pm %.1f $\\\\\n",sigprocesslatex[iProc].c_str(),sigcentralrates[iProc],procsysttotal[sigprocesses[iProc]]*sigcentralrates[iProc]);
+  }
+  printf("Data & $%d$\\\\\n",dataobs);
+  std::cout<<"\\hline"<<std::endl;
+  std::cout<<"\\hline"<<std::endl;
+  std::cout<<"\\end{tabular}"<<std::endl;
+}
 
 datacard<<std::endl;
 datacard<<std::endl;
@@ -1283,7 +1873,7 @@ datacard<<std::endl;
       datacard<<"W_tau_xsection rateParam ch1 wtauqcd 1"<<std::endl;
       datacard<<"W_tau_xsection rateParam ch1 wtauewk 1"<<std::endl;
     }
-    datacard<<"QCD_xsection rateParam ch1 qcd 1"<<std::endl;
+//     datacard<<"QCD_xsection rateParam ch1 qcd 1"<<std::endl;
     if (channel=="topl" || channel=="topb") datacard<<"Top_xsection rateParam ch1 top 1"<<std::endl;
   }
   else if (do_1param){
@@ -1294,15 +1884,23 @@ datacard<<std::endl;
       datacard<<"WZ_xsection rateParam ch1 wmuewk 1"<<std::endl;
       datacard<<"WZ_xsection rateParam ch1 welewk 1"<<std::endl;
       datacard<<"WZ_xsection rateParam ch1 wtauewk 1"<<std::endl;
-      datacard<<"QCD_xsection rateParam ch1 qcd 1"<<std::endl;
+//       datacard<<"QCD_xsection rateParam ch1 qcd 1"<<std::endl;
 
     if (channel=="mumu"){
       datacard<<"WZ_xsection rateParam ch1 zmumuqcd 1"<<std::endl;
       datacard<<"WZ_xsection rateParam ch1 zmumuewk 1"<<std::endl;
     }
-    if (channel=="nunu"){
+    if (channel=="ee"){
+      datacard<<"WZ_xsection rateParam ch1 zeeqcd 1"<<std::endl;
+      datacard<<"WZ_xsection rateParam ch1 zeeewk 1"<<std::endl;
+    }
+    if (channel=="nunu" || channel=="qcd"){
       datacard<<"WZ_xsection rateParam ch1 zvvewk 1"<<std::endl;
       datacard<<"WZ_xsection rateParam ch1 zvvqcd 1"<<std::endl;
+    }
+    if (channel=="nunu"||channel=="enu"||channel=="munu"||channel=="taunu"){
+      datacard<<"WZ_xsection rateParam ch1 zllewk 1"<<std::endl;
+      datacard<<"WZ_xsection rateParam ch1 zllqcd 1"<<std::endl;
     }
   }
 

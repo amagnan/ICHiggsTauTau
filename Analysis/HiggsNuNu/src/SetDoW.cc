@@ -10,7 +10,33 @@ void SetDoW(ic::mc mc, HinvWeights* xsWeights){
   long double TF_oneMinusAll,TF_htBin1,TF_htBin2,TF_htBin3,TF_htBin4,TF_htBin5,TF_htBin6,TF_htBin7;
   long double IY_Inclusive,IY_htBin1,IY_htBin2,IY_htBin3,IY_htBin4,IY_htBin5,IY_htBin6,IY_htBin7;
 
-  if (mc == mc::spring16_80X){
+  if (mc == mc::summer16_80X){// NOT USED
+    //XS_MC_WJetsToLNu-mg*
+    TF_oneMinusAll = 0.971164;
+    TF_htBin1      = 0.0218614;
+    TF_htBin2      = 0.00587794;
+    TF_htBin3      = 0.000789241;
+    TF_htBin4      = 0.000195483;
+    TF_htBin5      = 8.92920e-05;
+    TF_htBin6      = 2.16487e-05;
+    TF_htBin7      = 5.24458e-07;
+
+    //EVT_MC_WJetsToLNu-mg*
+    IY_Inclusive   = 28210360;
+    IY_htBin1      = 37778906;
+    IY_htBin2      = 19851624;
+    IY_htBin3      = 7432746;
+    IY_htBin4      = 18133257;
+    IY_htBin5      = 7854734;
+    IY_htBin6      = 7063909;
+    IY_htBin7      = 2507809;
+
+    xsWeights->set_do_w_soup(false);
+    xsWeights->set_do_w_reweighting(false);
+    xsWeights->SetWTargetFractions(TF_oneMinusAll,TF_htBin1,TF_htBin2,TF_htBin3,TF_htBin4,TF_htBin5,TF_htBin6,TF_htBin7);
+    xsWeights->SetWInputYields(IY_Inclusive,IY_htBin1,IY_htBin2,IY_htBin3,IY_htBin4,IY_htBin5,IY_htBin6,IY_htBin7);
+  }
+  else if (mc == mc::spring16_80X){
     //XS_MC_WJetsToLNu-mg*
     TF_oneMinusAll = 0.971164;
     TF_htBin1      = 0.0218614;

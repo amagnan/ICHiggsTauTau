@@ -31,7 +31,8 @@ namespace ic {
     enum jetmetCor {
       jecData=1,
       jecMC=2,
-      smearMC=3
+      smearMC=3,
+      type1cor=4
     };
     enum jetmetSyst {
       none=0,
@@ -70,6 +71,7 @@ namespace ic {
     CLASS_MEMBER(JetMETModifier, std::string, jesuncfile)
     CLASS_MEMBER(JetMETModifier, int, randomseed)
     CLASS_MEMBER(JetMETModifier, bool, run2)
+    CLASS_MEMBER(JetMETModifier, double, nSigma)
 
     std::vector<JetMETModifier::jetmetCor> corVec_;
     JetMETModifier::jetmetSyst syst_;
@@ -107,6 +109,7 @@ namespace ic {
     bool reapplyJecData_;
     bool reapplyJecMC_;
     bool smear_;
+    bool type1cor_;
 
     unsigned nRho_;
 

@@ -69,6 +69,11 @@ namespace ic {
   //----------------------------------------------------------
   bool GoodVertex(Vertex const* vertex);
 
+  //
+  bool isTightMuon(Muon* veto,std::vector<Muon*> sel);
+  bool isTightElectron(Electron* veto,std::vector<Electron*> sel);
+  bool isTightTau(Tau* veto,std::vector<Tau*> sel);
+
   //----------------------------------------------------------
   // Electron
   //----------------------------------------------------------
@@ -99,9 +104,20 @@ namespace ic {
   bool ElectronHTTTrigNoIPId(Electron const* elec, bool loose_wp);
   bool ElectronHTTIdSpring16(Electron const* elec, bool loose_wp);
 
+  bool TightElectronFullID16(Electron const* elec, double const& rho);
+  bool VetoElectronFullID16(Electron const* elec, double const& rho);
+
+  double getTotalEA(const double & eta);
+  double getTotalEA2016(const double & eta);
+  std::pair<double,double> getEA(const double & eta);
+  double getEA2016(const double & eta, const unsigned type);
   bool TightPhotonIDSpring15(Photon const* photon,double const& rho);
   bool MediumPhotonIDSpring15(Photon const* photon,double const& rho);
   bool LoosePhotonIDSpring15(Photon const* photon,double const& rho);
+
+  bool LoosePhotonID2016(Photon const* photon,double const& rho);
+  bool MediumPhotonID2016(Photon const* photon,double const& rho);
+  bool TightPhotonID2016(Photon const* photon,double const& rho);
 
   bool HttEMuFakeElectron(Electron const* elec);
   bool HttEMuFakeMuon(Muon const* muon);
@@ -131,6 +147,7 @@ namespace ic {
   bool PFJetID2015(PFJet const* jet);
   // Standard particle-flow jet id for 2016
   bool PFJetID2016(PFJet const* jet);
+  bool PFJetID2016v2(PFJet const* jet);
 
 
   // Particle-flow jet id without the HF energy in the neutral energy cut

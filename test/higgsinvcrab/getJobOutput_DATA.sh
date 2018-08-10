@@ -1,0 +1,9 @@
+#!/bin/bash
+uberftp sedsk65 "ls -r /pnfs/hep.ph.ic.ac.uk/data/cms/store/user/rdimaria/170201_DATA/JetHT/crab_JetHT-2016B-ReMiniAOD_ver2-v2/170801*" | grep '.root' | awk '{ print $NF }' | sort > 170201_DATA_JetHT-2016B-ReMiniAOD_ver2-v2.dat
+uberftp sedsk65 "ls -r /pnfs/hep.ph.ic.ac.uk/data/cms/store/user/rdimaria/170201_DATA/JetHT/crab_JetHT-2016C-ReMiniAOD-v1/170801*"      | grep '.root' | awk '{ print $NF }' | sort > 170201_DATA_JetHT-2016C-ReMiniAOD-v1.dat
+uberftp sedsk65 "ls -r /pnfs/hep.ph.ic.ac.uk/data/cms/store/user/rdimaria/170201_DATA/JetHT/crab_JetHT-2016D-ReMiniAOD-v1/170801*"      | grep '.root' | awk '{ print $NF }' | sort > 170201_DATA_JetHT-2016D-ReMiniAOD-v1.dat
+uberftp sedsk65 "ls -r /pnfs/hep.ph.ic.ac.uk/data/cms/store/user/rdimaria/170201_DATA/JetHT/crab_JetHT-2016E-ReMiniAOD-v1/170801*"      | grep '.root' | awk '{ print $NF }' | sort > 170201_DATA_JetHT-2016E-ReMiniAOD-v1.dat
+uberftp sedsk65 "ls -r /pnfs/hep.ph.ic.ac.uk/data/cms/store/user/rdimaria/170201_DATA/JetHT/crab_JetHT-2016F-ReMiniAOD-v1/170801*"      | grep '.root' | awk '{ print $NF }' | sort > 170201_DATA_JetHT-2016F-ReMiniAOD-v1.dat
+uberftp sedsk65 "ls -r /pnfs/hep.ph.ic.ac.uk/data/cms/store/user/rdimaria/170201_DATA/JetHT/crab_JetHT-2016G-ReMiniAOD-v1/170801*"      | grep '.root' | awk '{ print $NF }' | sort > 170201_DATA_JetHT-2016G-ReMiniAOD-v1.dat
+uberftp sedsk65 "ls -r /pnfs/hep.ph.ic.ac.uk/data/cms/store/user/rdimaria/170201_DATA/JetHT/crab_JetHT-2016H-ReMiniAOD_ver2-v1/170801*" | grep '.root' | awk '{ print $NF }' | sort > 170201_DATA_JetHT-2016H-ReMiniAOD_ver2-v1.dat
+uberftp sedsk65 "ls -r /pnfs/hep.ph.ic.ac.uk/data/cms/store/user/rdimaria/170201_DATA/JetHT/crab_JetHT-2016H-ReMiniAOD_ver3-v1/170801*" | grep '.root' | awk '{ print $NF }' | sort > 170201_DATA_JetHT-2016H-ReMiniAOD_ver3-v1.dat

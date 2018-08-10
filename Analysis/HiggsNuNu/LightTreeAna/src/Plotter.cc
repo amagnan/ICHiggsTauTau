@@ -65,9 +65,7 @@ namespace ic{
     std::cout<<module_name_<<":"<<std::endl;
     TFile* file=fs_;
     for(unsigned ishape=0;ishape<shapes_.size();ishape++){
-      std::vector<std::string> strs;
-      boost::split(strs, shapes_[ishape], boost::is_any_of("("));
-      std::string dirname=strs[0];
+      std::string dirname=extractShapeName(shapes_[ishape]);
       std::cout<<dirname<<std::endl;
       TDirectory*  dir=file->mkdir(dirname.c_str());
       dir->cd();

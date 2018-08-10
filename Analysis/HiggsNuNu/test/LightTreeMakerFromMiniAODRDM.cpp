@@ -82,6 +82,7 @@ int main(int argc, char* argv[]){
   bool dodatajessyst;             // Do Alternate Data Jet Energy Scale Method Systematic Run
   bool jesupordown;               // If doing Jet Energy Scale Systematic Run, run with up or down correction (true for up, false for down)
   bool dosmear;                   // Do Smearing
+  bool doType1Cor;                // Do type1 corrections (for single e from tautau group)
   bool doaltmatch;                // Do runmetuncertainties gen jet matching
   bool doetsmear;                 // Do runmetuncertainties smearing
   bool dogaus;                    // Do gaussian smearing for jets with no gen jet match
@@ -100,26 +101,22 @@ int main(int argc, char* argv[]){
   bool donoskim;                  // Do no skimming
 
   string mettype;                 // MET input collection to be used
+  string pfmettype;               // Calo MET input collection to be used
   string jettype;                 // JET input collection to be used
   string jesuncfile;              // File to get JES uncertainties from
   bool reapplyJEC;                // Reapply JEC from txt files
   string jecdata;                 // File list to get JEC to reapply offline
+  double nsigmaUnc;               //number of sigma for JES/JER uncertainty
 
   bool doMetFilters;              // apply cleaning MET filters.
   string filters;
   //unsigned signal_region;       // DeltaPhi cut > 2.7
   bool dotrgeff;                  // Do trigger efficiency corrections
-  bool do3dtrgeff;                // Do 3d trigger efficiency corrections
-  bool do1dparkedtrgeff;          // Do 1d parked trigger efficiency corrections
-  bool dofitted1dparkedtrgeff;    // Do 1d fitted parked trigger efficiency corrections
-  bool dobinnedin2d1dtrgeff;      // Do 2d binned fitted 1d parked trigger efficiency corrections
   bool doidisoeff;                // Do lepton ID-iso efficiency corrections
-  bool doidisoerr;                // Do lepton ID-iso efficiency correction error
-  bool doidisoerrupordown;        // Do lepton ID-iso efficiency correction error up or down
-  bool doidisoerrmuore;           // Do lepton ID-iso efficiency correction error for muons or electrons
   bool dolumixsweight;            // Do lumi*xs/evt weight online
   string inputparams;             // Params file to use for info on lumi xs and evt
-  string trg_weight_file;         // Trigger weights to use
+  string mettrg_weight_file;         // Trigger weights to use 
+  string mettrg_zmm_weight_file;         // Trigger weights to use for Zmm
   string trg_to_use;              // Which trigger to use for data
 
   //CUTS
@@ -128,6 +125,8 @@ int main(int argc, char* argv[]){
   double jetptprecut;             //jetptprecut, should be the CJV threshold
   double mjjcut;
   double detajjcut;
+  double dphijjcut;
+  double metcut;
 
   unsigned debug;
   int randomseed;
@@ -164,11 +163,14 @@ int main(int argc, char* argv[]){
     ("dojetEtaCut",           po::value<bool>(&dojetEtaCut)->default_value(false))
     ("is_data",               po::value<bool>(&is_data)->required())
     ("mettype",               po::value<string>(&mettype)->default_value("pfMetType1"))
-    ("jet1ptcut",             po::value<double>(&jet1ptcut)->default_value(80.))
-    ("jet2ptcut",             po::value<double>(&jet2ptcut)->default_value(70.))
+    ("pfmettype",             po::value<string>(&pfmettype)->default_value("pfMetType1Collection"))
+    ("jet1ptcut",             po::value<double>(&jet1ptcut)->default_value(0.))
+    ("jet2ptcut",             po::value<double>(&jet2ptcut)->default_value(0.))
     ("jetptprecut",           po::value<double>(&jetptprecut)->default_value(15.))
-    ("mjjcut",                po::value<double>(&mjjcut)->default_value(800.))
-    ("detajjcut",             po::value<double>(&detajjcut)->default_value(3.6))
+    ("mjjcut",                po::value<double>(&mjjcut)->default_value(600.))
+    ("detajjcut",             po::value<double>(&detajjcut)->default_value(1.0))
+    ("dphijjcut",             po::value<double>(&dphijjcut)->default_value(3.1416))
+    ("metcut",                po::value<double>(&metcut)->default_value(0))
     ("doMetFilters",          po::value<bool>(&doMetFilters)->default_value(false))
     ("filters",               po::value<string> (&filters)->default_value(""))
     ("dojessyst",             po::value<bool>(&dojessyst)->default_value(false))
@@ -184,32 +186,28 @@ int main(int argc, char* argv[]){
     ("taulepdiscrtight",      po::value<bool>(&taulepdiscrtight)->default_value(false))
     ("dojerdebug",            po::value<bool>(&dojerdebug)->default_value(false))
     ("dotrgeff",              po::value<bool>(&dotrgeff)->default_value(false))
-    ("do3dtrgeff",            po::value<bool>(&do3dtrgeff)->default_value(false))
-    ("do1dparkedtrgeff",      po::value<bool>(&do1dparkedtrgeff)->default_value(false))
-    ("dofitted1dparkedtrgeff",po::value<bool>(&dofitted1dparkedtrgeff)->default_value(false))
-    ("dobinnedin2d1dtrgeff",  po::value<bool>(&dobinnedin2d1dtrgeff)->default_value(false))
     ("doidisoeff",            po::value<bool>(&doidisoeff)->default_value(false))
     ("dotopreweighting",      po::value<bool>(&dotopreweighting)->default_value(false))
     ("dopromptskim",          po::value<bool>(&dopromptskim)->default_value(false))
     ("donoskim",              po::value<bool>(&donoskim)->default_value(false))
-    ("doidisoerr",            po::value<bool>(&doidisoerr)->default_value(false))
-    ("doidisoerrupordown",    po::value<bool>(&doidisoerrupordown)->default_value(true))
-    ("doidisoerrmuore",       po::value<bool>(&doidisoerrmuore)->default_value(true))
     ("dolumixsweight",        po::value<bool>(&dolumixsweight)->default_value(false))
-    ("inputparams",           po::value<string>(&inputparams)->default_value("filelists/161031/Params161031.dat"))
+    ("inputparams",           po::value<string>(&inputparams)->default_value(""))
     ("jettype",               po::value<string>(&jettype)->default_value("pfJetsPFlow"))
-    ("trg_weight_file",       po::value<string>(&trg_weight_file)->default_value("input/scale_factors/TrigEff2016_MET1DFitHFBinned_errors_12d9fb.root"))
-    ("trg_to_use",            po::value<string>(&trg_to_use)->default_value("HLT_DiPFJet40_DEta3p5_MJJ600_PFMETNoMu140"))
+    ("mettrg_weight_file",    po::value<string>(&mettrg_weight_file)->default_value(""))
+    ("mettrg_zmm_weight_file",po::value<string>(&mettrg_zmm_weight_file)->default_value(""))
+    ("trg_to_use",            po::value<string>(&trg_to_use)->default_value(""))
     ("printEventList",        po::value<bool>(&printEventList)->default_value(false))
     ("printEventContent",     po::value<bool>(&printEventContent)->default_value(false))
     ("dosmear",               po::value<bool>(&dosmear)->default_value(false))
+    ("doType1Cor",            po::value<bool>(&doType1Cor)->default_value(false))
     ("doaltmatch",            po::value<bool>(&doaltmatch)->default_value(false))
     ("doetsmear",             po::value<bool>(&doetsmear)->default_value(false))
     ("dogaus",                po::value<bool>(&dogaus)->default_value(false))
     ("dospring10gaus",        po::value<bool>(&dospring10gaus)->default_value(false))
-    ("jesuncfile",            po::value<string>(&jesuncfile)->default_value("input/jec/Spring16_25nsV6_MC_Uncertainty_AK4PFchs.txt"))
+    ("jesuncfile",            po::value<string>(&jesuncfile)->default_value(""))
     ("reapplyJEC",            po::value<bool>(&reapplyJEC)->default_value(false))
-    ("jecdata",               po::value<string>(&jecdata)->default_value("input/jec/Spring16_25nsV6_DATA_L1FastJet_AK4PFchs.txt,input/jec/Spring16_25nsV6_DATA_L2Relative_AK4PFchs.txt,input/jec/Spring16_25nsV6_DATA_L3Absolute_AK4PFchs.txt,input/jec/Spring16_25nsV6_DATA_L2L3Residual_AK4PFchs.txt"))
+    ("jecdata",               po::value<string>(&jecdata)->default_value(""))
+    ("nsigmaUnc",             po::value<double>(&nsigmaUnc)->default_value(1.))
     ("turnoffpuid",           po::value<bool>(&turnoffpuid)->default_value(false))
     ("useOldLT",              po::value<bool>(&useOldLT)->default_value(false))
     ("doTrigLT",              po::value<bool>(&doTrigLT)->default_value(false))
@@ -221,15 +219,37 @@ int main(int argc, char* argv[]){
   po::store(po::parse_config_file<char>(cfg.c_str(), config), vm);
   po::notify(vm);
 
-  vector<string> filtersVec;
-  boost::split(filtersVec, filters, boost::is_any_of(","));
-
-  std::vector<string> jecdatafiles;
-  boost::split(jecdatafiles, jecdata, boost::is_any_of(","));
-
   // Some options must now be re-configured based on other options
   ic::era era           = String2Era(era_str);
   ic::mc mc             = String2MC(mc_str);
+
+  vector<string> filtersVec;
+  boost::split(filtersVec, filters, boost::is_any_of(","));
+
+  if (era == era::data_2016_moriond17){
+    if (output_name.find("2016B") != output_name.npos || 
+        output_name.find("2016C") != output_name.npos || 
+        output_name.find("2016D") != output_name.npos) {
+      jesuncfile="input/jec/Summer16_23Sep2016BCDV4_DATA_Uncertainty_AK4PFchs.txt";
+      jecdata="input/jec/Summer16_23Sep2016BCDV4_DATA_L1FastJet_AK4PFchs.txt,input/jec/Summer16_23Sep2016BCDV4_DATA_L2Relative_AK4PFchs.txt,input/jec/Summer16_23Sep2016BCDV4_DATA_L3Absolute_AK4PFchs.txt,input/jec/Summer16_23Sep2016BCDV4_DATA_L2L3Residual_AK4PFchs.txt";
+    }
+    else if (output_name.find("2016E") != output_name.npos || 
+             output_name.find("2016F") != output_name.npos) {
+      jesuncfile="input/jec/Summer16_23Sep2016EFV4_DATA_Uncertainty_AK4PFchs.txt";
+      jecdata="input/jec/Summer16_23Sep2016EFV4_DATA_L1FastJet_AK4PFchs.txt,input/jec/Summer16_23Sep2016EFV4_DATA_L2Relative_AK4PFchs.txt,input/jec/Summer16_23Sep2016EFV4_DATA_L3Absolute_AK4PFchs.txt,input/jec/Summer16_23Sep2016EFV4_DATA_L2L3Residual_AK4PFchs.txt";
+    }
+    else if (output_name.find("2016G") != output_name.npos) {
+      jesuncfile="input/jec/Summer16_23Sep2016GV4_DATA_Uncertainty_AK4PFchs.txt";
+      jecdata="input/jec/Summer16_23Sep2016GV4_DATA_L1FastJet_AK4PFchs.txt,input/jec/Summer16_23Sep2016GV4_DATA_L2Relative_AK4PFchs.txt,input/jec/Summer16_23Sep2016GV4_DATA_L3Absolute_AK4PFchs.txt,input/jec/Summer16_23Sep2016GV4_DATA_L2L3Residual_AK4PFchs.txt";
+    }
+    else if (output_name.find("2016H") != output_name.npos) {
+      jesuncfile="input/jec/Summer16_23Sep2016HV4_DATA_Uncertainty_AK4PFchs.txt";
+      jecdata="input/jec/Summer16_23Sep2016HV4_DATA_L1FastJet_AK4PFchs.txt,input/jec/Summer16_23Sep2016HV4_DATA_L2Relative_AK4PFchs.txt,input/jec/Summer16_23Sep2016HV4_DATA_L3Absolute_AK4PFchs.txt,input/jec/Summer16_23Sep2016HV4_DATA_L2L3Residual_AK4PFchs.txt";
+    }
+  }
+  std::vector<string> jecdatafiles;
+  boost::split(jecdatafiles, jecdata, boost::is_any_of(","));
+
 
   std::cout << "**** HiggsNuNu Analysis *****" << std::endl;
   string param_fmt = "%-25s %-40s\n";
@@ -255,6 +275,8 @@ int main(int argc, char* argv[]){
   std::cout << boost::format(param_fmt) % "jet2ptcut" % jet2ptcut;
   std::cout << boost::format(param_fmt) % "mjjcut" % mjjcut;
   std::cout << boost::format(param_fmt) % "detajjcut" % detajjcut;
+  std::cout << boost::format(param_fmt) % "dphijjcut" % dphijjcut;
+  std::cout << boost::format(param_fmt) % "metcut" % metcut;
 
 
   // Load necessary libraries for ROOT I/O of custom classes
@@ -310,8 +332,8 @@ int main(int argc, char* argv[]){
   double veto_elec_pt, veto_elec_eta, veto_muon_pt, veto_muon_eta;
   double loose_photon_pt, loose_photon_eta, medium_photon_pt, medium_photon_eta, tight_photon_pt, tight_photon_eta;
 
-  double muon_iso = is2012 ? 0.12 : 0.1;//0.1;//0.15 -> too loose
-  double veto_muon_iso = is2012 ? 0.2 : 0.25;//0.15;//0.25 -> too loose??
+  double muon_iso = is2012 ? 0.12 : 0.15;
+  double veto_muon_iso = is2012 ? 0.2 : 0.25;
 
   elec_dz = 0.1;
   elec_dxy = 0.02;
@@ -368,6 +390,8 @@ int main(int argc, char* argv[]){
     "icEventProducer/EventTree", // TTree name
     max_events);          // Max. events to process (-1 = all)
 
+    //The following seems not working:
+    //analysis.StopOnFileFailure(false);
   // ------------------------------------------------------------------------------------
   // Misc Modules
   // ------------------------------------------------------------------------------------
@@ -391,21 +415,24 @@ int main(int argc, char* argv[]){
 //   if (era == era::data_2012_moriond) data_json   =  "input/json/data_2012_moriond.txt";
 //   if (era == era::data_2012_donly) data_json     =  "input/json/data_2012_donly.txt";
 
-  std::string mydebugoutput("/home/hep/rd1715/CMSSW_8_0_20/src/UserCode/ICHiggsTauTau/Analysis/HiggsNuNu/mydebugoutput");
+  std::string mydebugoutput("./mydebugJSON");
   std::string suffix = output_name.substr( 0 , output_name.find(".root") );
   mydebugoutput.append(suffix);
 
   if (era == era::data_2016){
     if (doICHEP2016){ // 12d9 /fb
-      data_json     =  "input/json/Cert_271036-276811_13TeV_PromptReco_Collisions16_JSON.txt";
+      data_json = "input/json/Cert_271036-276811_13TeV_PromptReco_Collisions16_JSON.txt";
     }
-    else if (doLastJSON){ // 27d66 /fb
-      data_json     =  "input/json/Cert_271036-280385_13TeV_PromptReco_Collisions16_JSON.txt";
+    else if (doLastJSON){ // 36d77 /fb
+      data_json = "input/json/Cert_271036-284044_13TeV_PromptReco_Collisions16_JSON.txt";
     }
+  }
+  if (era == era::data_2016_moriond17){// 36d815 /fb
+    data_json = "input/json/Cert_271036-284044_13TeV_23Sep2016ReReco_Collisions16_JSON.txt";
   }
 
   LumiMask lumiMask = LumiMask("LumiMask")
-   //.set_produce_output_jsons(mydebugoutput.c_str())
+    //.set_produce_output_jsons(mydebugoutput.c_str())
     .set_input_file(data_json);
 
   MakeRunStats runStats = MakeRunStats("RunStats")
@@ -420,6 +447,7 @@ int main(int argc, char* argv[]){
   if (mc == mc::spring15_74X) mc_pu_file = "input/pileup/MC_Spring15_PU25_Startup.root";
   if (mc == mc::fall15_76X) mc_pu_file   = "input/pileup/MC_Fall15_PU25_V1.root";
   if (mc == mc::spring16_80X) mc_pu_file = "input/pileup/MC_Spring16_PU25ns_V1.root";
+  if (mc == mc::summer16_80X) mc_pu_file = "input/pileup/MC_Summer16_PU25ns_V1.root";
 
   string data_pu_file;
   if (era == era::data_2012_rereco) data_pu_file  =  "input/pileup/Data_Pileup_2012_ReRecoPixel-600bins.root";
@@ -432,11 +460,14 @@ int main(int argc, char* argv[]){
   if (era == era::data_2015_25ns) data_pu_file    =  "input/pileup/Data_Pileup_mb69_2015D_246908-260627-600bins.root";
   if (era == era::data_2016){
     if (doICHEP2016){ // 12d9 /fb
-      data_pu_file         =  "input/pileup/12d9/Data_Pileup_mb69d2_2016-600bins.root";
+      data_pu_file = "input/pileup/12d9/Data_Pileup_mb69d2_2016-600bins.root";
     }
-    else if (doLastJSON){ // 27d66 /fb
-      data_pu_file         =  "input/pileup/27d66/Data_Pileup_mb69d2_2016-600bins.root";
+    else if (doLastJSON){ // 36d77 /fb
+      data_pu_file = "input/pileup/36d77/Data_Pileup_mb69d2_2016-600bins.root";
     }
+  }
+  if (era == era::data_2016_moriond17){// 36d815 /fb
+    data_pu_file = "input/pileup/ReReco_Moriond17/Data_Pileup_mb69d2_2016-800bins.root";
   }
 
   TH1D data_pu  = GetFromTFile<TH1D>(data_pu_file, "/", "pileup");
@@ -466,10 +497,14 @@ int main(int argc, char* argv[]){
       data_pu_up    = GetFromTFile<TH1D>("input/pileup/12d9/Data_Pileup_mb72d4_2016-600bins.root", "/", "pileup");
       data_pu_down  = GetFromTFile<TH1D>("input/pileup/12d9/Data_Pileup_mb66_2016-600bins.root", "/", "pileup");
     }
-    else if (doLastJSON){ // 27d66 /fb
-      data_pu_up    = GetFromTFile<TH1D>("input/pileup/27d66/Data_Pileup_mb72d4_2016-600bins.root", "/", "pileup");
-      data_pu_down  = GetFromTFile<TH1D>("input/pileup/27d66/Data_Pileup_mb66_2016-600bins.root", "/", "pileup");
+    else if (doLastJSON){ // 36d77 /fb
+      data_pu_up    = GetFromTFile<TH1D>("input/pileup/36d77/Data_Pileup_mb72d4_2016-600bins.root", "/", "pileup");
+      data_pu_down  = GetFromTFile<TH1D>("input/pileup/36d77/Data_Pileup_mb66_2016-600bins.root", "/", "pileup");
     }
+  }
+  else if(era == era::data_2016_moriond17){// 36d815 /fb
+    data_pu_up    = GetFromTFile<TH1D>("input/pileup/ReReco_Moriond17/Data_Pileup_mb72d4_2016-800bins.root", "/", "pileup");
+    data_pu_down  = GetFromTFile<TH1D>("input/pileup/ReReco_Moriond17/Data_Pileup_mb66_2016-800bins.root", "/", "pileup");
   }
 
   if (!is_data) {
@@ -529,7 +564,7 @@ int main(int argc, char* argv[]){
   ComplexFilter<Photon,EventInfo,double> loosePhotonFilter = ComplexFilter<Photon,EventInfo,double>
     ("LoosePhotonFilter")
     .set_primary_input_label("loosePhotons").set_predicate(bind(MinPtMaxEta, _1, loose_photon_pt, loose_photon_eta)&&
-							   bind(LoosePhotonIDSpring15, _1,_2))
+							   bind(LoosePhotonID2016, _1,_2))
     .set_secondary_input_label("eventInfo").set_secondary_predicate(bind(&EventInfo::jet_rho,_1))
     .set_min(0)
     .set_max(999);
@@ -540,7 +575,7 @@ int main(int argc, char* argv[]){
   ComplexFilter<Photon,EventInfo,double> mediumPhotonFilter = ComplexFilter<Photon,EventInfo,double>
     ("MediumPhotonPtEtaFilter")
     .set_primary_input_label("mediumPhotons").set_predicate(bind(MinPtMaxEta, _1, medium_photon_pt, medium_photon_eta)&&
-							    bind(MediumPhotonIDSpring15, _1,_2))
+							    bind(MediumPhotonID2016, _1,_2))
     .set_secondary_input_label("eventInfo").set_secondary_predicate(bind(&EventInfo::jet_rho,_1))
     .set_min(0)
     .set_max(999);
@@ -551,7 +586,7 @@ int main(int argc, char* argv[]){
   ComplexFilter<Photon,EventInfo,double> tightPhotonFilter = ComplexFilter<Photon,EventInfo,double>
     ("TightPhotonPtEtaFilter")
     .set_primary_input_label("tightPhotons").set_predicate(bind(MinPtMaxEta, _1, tight_photon_pt, tight_photon_eta)&&
-							   bind(TightPhotonIDSpring15, _1,_2))
+							   bind(TightPhotonID2016, _1,_2))
     .set_secondary_input_label("eventInfo").set_secondary_predicate(bind(&EventInfo::jet_rho,_1))						   
     .set_min(0)
     .set_max(999);
@@ -566,11 +601,12 @@ int main(int argc, char* argv[]){
   ComplexFilter<Electron,EventInfo,double> vetoElectronFilter = ComplexFilter<Electron,EventInfo,double>
     ("VetoElectronPtEtaFilter")
     .set_primary_input_label("vetoElectrons").set_predicate(bind(MinPtMaxSCEta, _1, veto_elec_pt, veto_elec_eta) &&
-							    bind(VetoElectronFullIDSpring15, _1, _2)// && 
-    //                                              bind(fabs, bind(&Electron::dxy_vertex, _1)) < veto_elec_dxy && 
-    //						    bind(fabs, bind(&Electron::dz_vertex, _1)) < veto_elec_dz
-						    )
-    .set_secondary_input_label("eventInfo").set_secondary_predicate(bind(&EventInfo::lepton_rho,_1))						   
+							    bind(VetoElectronFullID16, _1, _2)// && 
+							    //bind(VetoElectronFullIDSpring15, _1, _2)// && 
+							    //bind(fabs, bind(&Electron::dxy_vertex, _1)) < veto_elec_dxy && 
+							    //bind(fabs, bind(&Electron::dz_vertex, _1)) < veto_elec_dz
+							    )
+    .set_secondary_input_label("eventInfo").set_secondary_predicate(bind(&EventInfo::jet_rho,_1))						   
     .set_min(0)
     .set_max(999);
 
@@ -581,17 +617,22 @@ int main(int argc, char* argv[]){
   ComplexFilter<Electron,EventInfo,double> selElectronFilter = ComplexFilter<Electron,EventInfo,double>
     ("SelElectronPtEtaFilter")
     .set_primary_input_label("selElectrons").set_predicate(bind(MinPtMaxSCEta, _1, elec_pt, elec_eta) &&
-						   bind(TightElectronFullIDSpring15, _1, _2)// &&
-						   //bind(fabs, bind(&Electron::dxy_vertex, _1)) < elec_dxy && 
-						   //bind(fabs, bind(&Electron::dz_vertex, _1)) < elec_dz
-						   )
-    .set_secondary_input_label("eventInfo").set_secondary_predicate(bind(&EventInfo::lepton_rho,_1))						   
+							   bind(TightElectronFullID16, _1, _2) //&&
+							   //bind(TightElectronFullIDSpring15, _1, _2) //&&
+							   //bind(fabs, bind(&Electron::dxy_vertex, _1)) < elec_dxy && 
+							   //bind(fabs, bind(&Electron::dz_vertex, _1)) < elec_dz
+							   )
+    .set_secondary_input_label("eventInfo").set_secondary_predicate(bind(&EventInfo::jet_rho,_1))						   
     .set_min(0)
     .set_max(999);
 
   EffectiveAreaIsolationFilter selElectronIso = EffectiveAreaIsolationFilter("SelElectronIso","selElectrons",0.10);
 
-  OverlapFilter<Electron, Muon> elecMuonOverlapFilter = OverlapFilter<Electron, Muon>("ElecMuonOverlapFilter")
+  OverlapFilter<Electron, Muon> vetoelecMuonOverlapFilter = OverlapFilter<Electron, Muon>("VetoElecMuonOverlapFilter")
+    .set_input_label("vetoElectrons")
+    .set_reference_label("vetoMuons")
+    .set_min_dr(0.3);
+  OverlapFilter<Electron, Muon> selelecMuonOverlapFilter = OverlapFilter<Electron, Muon>("SelElecMuonOverlapFilter")
     .set_input_label("selElectrons")
     .set_reference_label("vetoMuons")
     .set_min_dr(0.3);
@@ -609,6 +650,7 @@ int main(int argc, char* argv[]){
     .set_predicate(bind(MinPtMaxEta, _1, veto_muon_pt, veto_muon_eta) &&
 		   bind(MuonLoose, _1) &&
 		   bind(PF04IsolationVal<Muon>, _1, 0.5, false) < veto_muon_iso
+		   //&& bind(&Muon::HasIdIso,_1,"muon_idiso_badGlobalMuonTagger")==false
 		   //&& bind(fabs, bind(&Muon::dxy_vertex, _1)) < veto_muon_dxy 
 		   //&& bind(fabs, bind(&Muon::dz_vertex, _1)) < veto_muon_dz
 		   )
@@ -636,6 +678,7 @@ int main(int argc, char* argv[]){
 					       bind(PF04IsolationVal<Muon>, _1, 0.5, false) < muon_iso
 					       && bind(fabs, bind(&Muon::dxy_vertex, _1)) < muon_dxy && 
 					       bind(fabs, bind(&Muon::dz_vertex, _1)) < muon_dz
+					       //&& bind(&Muon::HasIdIso,_1,"muon_idiso_badGlobalMuonTagger")==false
 					       )
     .set_min(0)
     .set_max(999);
@@ -661,7 +704,7 @@ int main(int argc, char* argv[]){
 
   SimpleFilter<Tau> tauPtEtaFilter = SimpleFilter<Tau>("TauPtEtaFilter")
     .set_input_label("taus")
-    .set_predicate(bind(MinPtMaxEta, _1, 20, 2.3))
+    .set_predicate(bind(MinPtMaxEta, _1, 18, 2.3))
     .set_min(0);
 
   SimpleFilter<Tau> tauDzFilter = SimpleFilter<Tau>("TauDzFilter")
@@ -669,10 +712,14 @@ int main(int argc, char* argv[]){
     .set_predicate(bind(fabs, bind(&Tau::lead_dz_vertex, _1)) < 0.2)
     .set_min(0);
 
-  std::string tau_id_discr, tau_iso_discr, tau_anti_elec_discr_1, tau_anti_elec_discr_2, tau_anti_muon_discr;
+  CopyCollection<Tau>  vetoTauCopyCollection("CopyToVetoTaus","taus","vetoTaus");
+
+  std::string tau_id_discr, tau_iso_discr, vetotau_iso_discr, tau_anti_elec_discr_1, tau_anti_elec_discr_2, tau_anti_muon_discr;
   if(do2016tauid){
     tau_id_discr          = "decayModeFinding";
     tau_iso_discr         = "byMediumIsolationMVArun2v1DBoldDMwLT";
+    //tau_iso_discr         = "byLooseCombinedIsolationDeltaBetaCorr3Hits";
+    vetotau_iso_discr     = "byVLooseIsolationMVArun2v1DBoldDMwLT";//"byCombinedIsolationDeltaBetaCorrRaw3Hits";
     tau_anti_muon_discr   = "againstMuonLoose3";
     tau_anti_elec_discr_1 = "againstElectronVLooseMVA6";
     tau_anti_elec_discr_2 = "againstElectronVLooseMVA6";
@@ -708,6 +755,7 @@ int main(int argc, char* argv[]){
   
   std::cout << "** Tau Discriminators **" << std::endl;
   std::cout << boost::format(param_fmt) % "isolation" %  tau_iso_discr;
+  std::cout << boost::format(param_fmt) % "isolation for veto taus" %  tau_iso_discr;
   std::cout << boost::format(param_fmt) % "anti-electron1" % tau_anti_elec_discr_1;
   std::cout << boost::format(param_fmt) % "anti-electron2" % tau_anti_elec_discr_2;
   std::cout << boost::format(param_fmt) % "anti-muon" % tau_anti_muon_discr;
@@ -717,9 +765,14 @@ int main(int argc, char* argv[]){
     .set_input_label("taus")
     .set_predicate((bind(&Tau::GetTauID, _1, tau_iso_discr) > 0.5) && (bind(&Tau::GetTauID, _1, tau_id_discr) > 0.5))
     .set_min(0);
+  
+  SimpleFilter<Tau> vetotauIsoFilter = SimpleFilter<Tau>("VetoTauIsoFilter")
+    .set_input_label("vetoTaus")
+    .set_predicate((bind(&Tau::GetTauID, _1, vetotau_iso_discr) > 0.5) && (bind(&Tau::GetTauID, _1, tau_id_discr) > 0.5))
+    .set_min(0);
 
   SimpleFilter<Tau> tauElRejectFilter = SimpleFilter<Tau>("TauElRejectFilter")
-    .set_predicate( (bind(&Tau::GetTauID, _1, tau_anti_elec_discr_1) > 0.5) && (bind(&Tau::GetTauID, _1, tau_anti_elec_discr_2) > 0.5) )                     
+    .set_predicate( (bind(&Tau::GetTauID, _1, tau_anti_elec_discr_1) > 0.5) && (bind(&Tau::GetTauID, _1, tau_anti_elec_discr_2) > 0.5) )        
     .set_input_label("taus")
     .set_min(0); 
 
@@ -728,6 +781,25 @@ int main(int argc, char* argv[]){
     .set_input_label("taus")
     .set_min(0);
 
+  OverlapFilter<Tau, Muon> tauMuonOverlapFilter = OverlapFilter<Tau, Muon>("TauMuonOverlapFilter")
+    .set_input_label("taus")
+    .set_reference_label("vetoMuons")
+    .set_min_dr(0.4);
+
+  OverlapFilter<Tau, Electron> tauElecOverlapFilter = OverlapFilter<Tau, Electron>("TauElecOverlapFilter")
+    .set_input_label("taus")
+    .set_reference_label("vetoElectrons")
+    .set_min_dr(0.4);
+
+  OverlapFilter<Tau, Muon> vetotauMuonOverlapFilter = OverlapFilter<Tau, Muon>("VetoTauMuonOverlapFilter")
+    .set_input_label("vetoTaus")
+    .set_reference_label("vetoMuons")
+    .set_min_dr(0.4);
+
+  OverlapFilter<Tau, Electron> vetotauElecOverlapFilter = OverlapFilter<Tau, Electron>("VetoTauElecOverlapFilter")
+    .set_input_label("vetoTaus")
+    .set_reference_label("vetoElectrons")
+    .set_min_dr(0.4);
 
   // ------------------------------------------------------------------------------------
   // Jet Modules
@@ -753,11 +825,13 @@ int main(int argc, char* argv[]){
     .set_jesuncfile(jesuncfile)
     .set_randomseed(randomseed)
     .set_run2(!is2012)
+    .set_nSigma(nsigmaUnc)
     .set_fs(fs);
   std::vector<JetMETModifier::jetmetCor> corVec;
   if (reapplyJEC && is_data) corVec.push_back(JetMETModifier::jetmetCor::jecData);
   if (reapplyJEC && !is_data) corVec.push_back(JetMETModifier::jetmetCor::jecMC);
   if (dosmear)    corVec.push_back(JetMETModifier::jetmetCor::smearMC);
+  if (doType1Cor) corVec.push_back(JetMETModifier::jetmetCor::type1cor);
   ModifyJetMET.set_corVec(corVec);
 
   if (dojessyst) ModifyJetMET.set_syst(jesupordown?JetMETModifier::jetmetSyst::jesUp:JetMETModifier::jetmetSyst::jesDown);
@@ -770,11 +844,13 @@ int main(int argc, char* argv[]){
     ("JetIDFilter")
     .set_input_label(jettype);
     if(!turnoffpuid){
-      jetIDFilter.set_predicate((bind(PFJetID2016, _1)) && bind(PileupJetID, _1,is2012?2:4,true));
+      //Medium ID implemented. Loose ID implemented. To use Medium ID, turn it back in Analysis/Utilities/src/FnPredicates.cc#L406
+      //jetIDFilter.set_predicate((bind(PFJetID2016v2, _1)) && bind(PileupJetID, _1,is2012?2:4,true));
       //jetIDFilter.set_predicate((bind(PFJetID2015, _1)) && bind(PileupJetID, _1,is2012?2:3,true));
+      jetIDFilter.set_predicate((bind(PFJetID2016v2, _1)) && bind(PileupJetID, _1,is2012?2:4,false));
     }
     else{
-      jetIDFilter.set_predicate(bind(PFJetID2016, _1));
+      jetIDFilter.set_predicate(bind(PFJetID2016v2, _1));
       //jetIDFilter.set_predicate(bind(PFJetID2015, _1));
     }
 
@@ -840,7 +916,8 @@ int main(int argc, char* argv[]){
     .set_max(999);
 
   if(!donoskim && !doAllPairs){
-    jetPairFilter.set_predicate(bind(OrderedPairPtSelection, _1,jet1ptcut, jet2ptcut, cutaboveorbelow) && !bind(PairDEtaLessThan, _1, detajjcut) && bind(PairMassInRange, _1,mjjcut,100000) );
+    //jetPairFilter.set_predicate(bind(OrderedPairPtSelection, _1,jet1ptcut, jet2ptcut, cutaboveorbelow) && !bind(PairDEtaLessThan, _1, detajjcut) && bind(PairMassInRange, _1,mjjcut,100000) );
+    jetPairFilter.set_predicate(bind(OrderedPairPtSelection, _1,jet1ptcut, jet2ptcut, cutaboveorbelow) && !bind(PairDEtaLessThan, _1, detajjcut) && bind(PairAbsDPhiLessThan, _1, dphijjcut) && bind(PairMassInRange, _1,mjjcut,100000) );
   }
 
   if (doAllPairs) {
@@ -855,24 +932,22 @@ int main(int argc, char* argv[]){
   SingleMetMaker singleMet = SingleMetMaker(mettype,mettype+"Collection");
 
   MetSelection metFilters = MetSelection("MetFilters",mettype,doMetFilters,filtersVec,0);
-  
+
 
   unsigned nLepToAdd = 100;
   //no need to be explicit in the number of leptons: will take the number 
   // that is asked in the selection (i.e. exactly one for the W->e,mu selections...)
-  
-  ModifyMet metNoMuons     = ModifyMet("metNoMuons",mettype,"selMuons",2,nLepToAdd);
-  ModifyMet metNoElectrons = ModifyMet("metNoElectrons",mettype,"selElectrons",1,nLepToAdd);
-  ModifyMet metNoENoMu     = ModifyMet("metNoENoMu","metNoMuons","selElectrons",1,nLepToAdd);
 
+  ModifyMet metNoMuons     = ModifyMet("metNoMuons",mettype,"vetoMuons",2,nLepToAdd);
+  ModifyMet metNoElectrons = ModifyMet("metNoElectrons",mettype,"vetoElectrons",1,nLepToAdd);
+  ModifyMet metNoENoMu     = ModifyMet("metNoENoMu","metNoMuons","vetoElectrons",1,nLepToAdd);
+
+  MetSelection minMetCut = MetSelection("minMetCut","metNoMuons",false,filtersVec,metcut);
 
   // ------------------------------------------------------------------------------------
   // Weight Modules
   // ------------------------------------------------------------------------------------  
 
-
-
-  
   HinvWeights hinvWeights = HinvWeights("HinvWeights")
     .set_era(era)
     .set_mc(mc)
@@ -882,35 +957,13 @@ int main(int argc, char* argv[]){
     .set_trg_applied_in_mc(false)
     .set_do_idiso_tight_weights(false)
     .set_do_idiso_veto_weights(false)
-    .set_do_idiso_err(doidisoerr)
-    .set_do_idiso_errupordown(doidisoerrupordown)
-    .set_do_idiso_errmuore(doidisoerrmuore)
     .set_fs(fs)
     .set_input_met("metNoMuons");
   if (!is_data) {
-    std::vector<double> jptbinning;
-    jptbinning.push_back(70);
-    jptbinning.push_back(80);
-    jptbinning.push_back(1000);
-    std::vector<double> mjjbinning;
-    mjjbinning.push_back(800);
-    mjjbinning.push_back(1000);
-    mjjbinning.push_back(10000);
     hinvWeights.set_do_trg_weights(dotrgeff)
-      .set_do_3dtrg_weights(do3dtrgeff)
-      .set_do_1dparkedtrg_weights(do1dparkedtrgeff)
-      .set_do_fitted1dparkedtrg_weights(dofitted1dparkedtrgeff)
-      .set_do_binnedin2d1dfittedtrg_weights(dobinnedin2d1dtrgeff)
-      .set_binnedin2d1dfitweightvar1binning(jptbinning)
-      .set_binnedin2d1dfitweightvar2binning(mjjbinning)
-      .set_do_run2(true)
-      .set_trg_weight_file(trg_weight_file)
+      .set_mettrg_weight_file(mettrg_weight_file)
+      .set_mettrg_zmm_weight_file(mettrg_zmm_weight_file)
       .set_trg_applied_in_mc(false);
-    if(do3dtrgeff){
-      hinvWeights.set_Alumi(0.889)
-	.set_BClumi(11.023)
-	.set_Dlumi(7.315);
-    }
     hinvWeights.set_do_idiso_veto_weights(false);
     hinvWeights.set_do_idiso_tight_weights(false);
   }
@@ -928,30 +981,51 @@ int main(int argc, char* argv[]){
     .set_sample_name(output_name)
     .set_fs(fs);
 
+//   Do not weight anymore, since we are dropping the inclusive sample due to MIT sync
+//   If you switch it back, remember to change filelists/*/Params*.dat 
+//   if (output_name.find("JetsToLNu") != output_name.npos &&
+//       output_name.find("EWKW") == output_name.npos &&
+//       output_name.find("nlo") == output_name.npos) {
+// 
+//     SetDoW( mc, &xsWeights );
+//   }
 
-  if (output_name.find("JetsToLNu") != output_name.npos &&
-      output_name.find("EWKW") == output_name.npos &&
-      output_name.find("nlo") == output_name.npos) {
+//   Do not weight anymore, since we are dropping all the samples *but* HT-binned due to MIT sync
+//   if (output_name.find("JetsToLL-mg-m50") != output_name.npos &&
+//       output_name.find("PtZ-100-madgraph") == output_name.npos &&
+//       output_name.find("Zpt150") == output_name.npos &&
+//       output_name.find("DYJJ01") == output_name.npos &&
+//       output_name.find("m50-ht") == output_name.npos) {
+// 
+//     SetDoDY( mc, &xsWeights );
+//   }
 
-    SetDoW( mc, &xsWeights );
+  if (output_name.find("JetsToLL-mg-m50-ht") != output_name.npos) {
+    xsWeights.set_do_dy_reweighting(true);
   }
 
-  if (output_name.find("JetsToLL-mg-m50") != output_name.npos &&
-      output_name.find("PtZ-100-madgraph") == output_name.npos &&
-      output_name.find("Zpt150") == output_name.npos &&
-      output_name.find("DYJJ01") == output_name.npos &&
-      output_name.find("m50-ht") == output_name.npos) {
+  if (output_name.find("JetsToNuNu") != output_name.npos) {
+    xsWeights.set_do_z_reweighting(true);
+    }
 
-    SetDoDY( mc, &xsWeights );
+  if (output_name.find("JetsToLNu-mg-ht") != output_name.npos) {
+    xsWeights.set_do_w_reweighting(true);
   }
 
-  /*if (output_name.find("JetsToLL") != output_name.npos &&
-      output_name.find("m50-ht") != output_name.npos){
-    xsWeights.set_do_dy_soup_htbinned(false);
-    xsWeights.set_do_dy_reweighting(false);
-    xsWeights.SetDYTargetFractions(1,1,1,1,1);
-    xsWeights.SetDYInputYields(9004328,0,962195,1069003,1031103);
-    }*/
+  HinvWeights nloWeights = HinvWeights("NLOWeights")
+  .set_era(era)
+  .set_mc(mc)
+  .set_input_params(inputparams)
+  .set_sample_name(output_name)
+  .set_fs(fs);
+
+  if (output_name.find("EWKZ") != output_name.npos) {
+    nloWeights.set_do_ewk_dy_reweighting(true);
+    }
+
+  if (output_name.find("EWKW") != output_name.npos) {
+    nloWeights.set_do_ewk_w_reweighting(true);
+  }
 
   // ------------------------------------------------------------------------------------
   // Gen particle selection modules
@@ -1000,11 +1074,11 @@ int main(int argc, char* argv[]){
     .set_trigger_path("HLT_DiPFJet40_PFMETnoMu65_MJJ800VBF_AllJets_v");
   //.set_trig_obj_label("triggerObjectsPFMET170NoiseCleaned");
 
-//  LightTreeAM lightTreeNew = LightTreeAM("LightTreeNew")
   LightTreeRDM lightTreeNew = LightTreeRDM("LightTreeNew")
     .set_fs(fs)
     .set_debug(debug)
     .set_met_label(mettype)
+    .set_pfmet_label(pfmettype)
     .set_jet_label(jettype)
     .set_dijet_label("jjLeadingCandidates")
     .set_is_data(is_data)
@@ -1012,6 +1086,8 @@ int main(int argc, char* argv[]){
     .set_do_promptskim(dopromptskim)
     .set_do_noskim(donoskim)
     .set_ignoreLeptons(ignoreLeptons);
+
+  if (output_name.find("JetHT") != output_name.npos || output_name.find("QCD") != output_name.npos) lightTreeNew.set_do_jetht(true);
 
   if (doAllPairs) lightTreeNew.set_dijet_label("jjAllCandidates");
 
@@ -1021,13 +1097,14 @@ int main(int argc, char* argv[]){
 
   if (is_data) analysis.AddModule(&lumiMask);
 
-  analysis.AddModule(&singleMet);
+  //fix for single elec files
+  if (!doType1Cor) analysis.AddModule(&singleMet);
   if (!is_data) {
     //do W streaming to e,mu,tau
     if (isW) {
       if (wstream != "nunu") {
-	if (is2012) analysis.AddModule(&WtoLeptonFilter2012);
-	else analysis.AddModule(&WtoLeptonFilter);
+        if (is2012) analysis.AddModule(&WtoLeptonFilter2012);
+        else analysis.AddModule(&WtoLeptonFilter);
       }
     }
     //Do PU Weight
@@ -1047,26 +1124,32 @@ int main(int argc, char* argv[]){
 
   //if (printEventList) analysis.AddModule(&hinvPrintList);
   if (true) { //it was "is_data"; now changed to apply on MC badChargedHadronFilter & badMuonFilter; but be careful to change correctly the cfg file
-    // see line 459
     //analysis.AddModule(&dataMCTriggerPathFilter);
     analysis.AddModule(&metFilters);
     //74X only
     //analysis.AddModule(&cscTightHaloFilter);
   }
 
-  if(!donoskim)analysis.AddModule(&goodVertexFilter);
+  if(!donoskim) analysis.AddModule(&goodVertexFilter);
   //jet modules
+  //Module to do jet smearing and systematics
+  //analysis.AddModule(&jecStudy);
+  analysis.AddModule(&ModifyJetMET);
+
   analysis.AddModule(&jetIDFilter);
   //don't want pile-up jets to calculate HT,MHT...
   analysis.AddModule(&alljetsCopyCollection);
 
   //prepare collections of photons
-  analysis.AddModule(&loosePhotonCopyCollection);
-  analysis.AddModule(&loosePhotonFilter);
-  analysis.AddModule(&mediumPhotonCopyCollection);
-  analysis.AddModule(&mediumPhotonFilter);
-  analysis.AddModule(&tightPhotonCopyCollection);
-  analysis.AddModule(&tightPhotonFilter);
+  //no photons in tautau single ele data files...
+  if (!doType1Cor){
+    analysis.AddModule(&loosePhotonCopyCollection);
+    analysis.AddModule(&loosePhotonFilter);
+    analysis.AddModule(&mediumPhotonCopyCollection);
+    analysis.AddModule(&mediumPhotonFilter);
+    analysis.AddModule(&tightPhotonCopyCollection);
+    analysis.AddModule(&tightPhotonFilter);
+  }
 
   //prepare collections of veto leptons
   analysis.AddModule(&vetoElectronCopyCollection);
@@ -1081,32 +1164,41 @@ int main(int argc, char* argv[]){
   //analysis.AddModule(&selElectronIso);
   analysis.AddModule(&selMuonCopyCollection);
   analysis.AddModule(&selMuonFilter);
-  analysis.AddModule(&elecMuonOverlapFilter);
+  analysis.AddModule(&vetoelecMuonOverlapFilter);
+  analysis.AddModule(&selelecMuonOverlapFilter);
 
   //filter taus for plots
   analysis.AddModule(&tauPtEtaFilter);
 
   //if (printEventList) analysis.AddModule(&hinvPrintList);
 
-  //Module to do jet smearing and systematics
-  //analysis.AddModule(&jecStudy);
-  analysis.AddModule(&ModifyJetMET);
 
   //deal with removing overlap with selected leptons
   analysis.AddModule(&jetMuonOverlapFilter);
   analysis.AddModule(&jetElecOverlapFilter);
   //no need to clean taus, we don't do it in the signal selection.
+  //analysis.AddModule(&jetTauOverlapFilter);
+
 
   //add met without leptons for plots
   analysis.AddModule(&metNoMuons);
   analysis.AddModule(&metNoElectrons);
   analysis.AddModule(&metNoENoMu);
 
+//   analysis.AddModule(&minMetCut);
+
   //filter taus
+  analysis.AddModule(&vetoTauCopyCollection);
+  analysis.AddModule(&vetotauIsoFilter);
+  analysis.AddModule(&vetotauMuonOverlapFilter);
+  analysis.AddModule(&vetotauElecOverlapFilter);
+
   analysis.AddModule(&tauDzFilter);
   analysis.AddModule(&tauIsoFilter);
   analysis.AddModule(&tauElRejectFilter);
   analysis.AddModule(&tauMuRejectFilter);
+  analysis.AddModule(&tauMuonOverlapFilter);
+  analysis.AddModule(&tauElecOverlapFilter);
 
   //filter jets
   analysis.AddModule(&jetPtEtaFilter);
@@ -1132,6 +1224,7 @@ int main(int argc, char* argv[]){
   //record the number of jets in the gap
   analysis.AddModule(&jetPairFilter);
   analysis.AddModule(&FilterCJV);
+  if (!is_data) analysis.AddModule(&nloWeights);
 
   //jet pair selection
   //if (printEventList) analysis.AddModule(&hinvPrintList);

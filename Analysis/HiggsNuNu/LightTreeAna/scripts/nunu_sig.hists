@@ -1,3 +1,8 @@
 metnomuons(25,200.,600.)	;E_{T,no-#mu}^{miss} (GeV);Events
 dijet_M(20,1100.,4000.)	;M_{jj} (GeV);Events
 dijet_deta(20,3.6,7.)	;#Delta#eta_{jj};Events
+nvetotaus(3,0,3)        ;n_{veto#tau};Events
+n_jets_csv2medium(5,0,5);n_{bjets};Events
+dijet_dphi(20,0.,3.1416)	;#Delta#phi_{jj};Events
+central_tag_eta(25,-5.,5.)	;Central tag jet #eta;Events
+forward_tag_eta(25,-5.,5.)	;Forward tag jet #eta;Events

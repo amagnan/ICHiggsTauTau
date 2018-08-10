@@ -20,59 +20,64 @@ class HinvWeights : public ModuleBase {
   CLASS_MEMBER(HinvWeights, ic::mc, mc)
   CLASS_MEMBER(HinvWeights, ic::era, era)
   CLASS_MEMBER(HinvWeights, bool, save_weights)
-  CLASS_MEMBER(HinvWeights, bool, save_lumixs_weights)  
+  CLASS_MEMBER(HinvWeights, bool, save_lumixs_weights)
   CLASS_MEMBER(HinvWeights, bool, do_top_reweighting)
   CLASS_MEMBER(HinvWeights, bool, do_trg_weights)
-  CLASS_MEMBER(HinvWeights, bool, do_1dparkedtrg_weights)
-  CLASS_MEMBER(HinvWeights, bool, do_fitted1dparkedtrg_weights)
-  CLASS_MEMBER(HinvWeights, bool, do_3dtrg_weights)
-  CLASS_MEMBER(HinvWeights, bool, do_binnedin2d1dfittedtrg_weights)
-  CLASS_MEMBER(HinvWeights, std::vector<std::string>, binnedin2d1dfitweightvarorder)//bin in first two fit in 3rd
-  CLASS_MEMBER(HinvWeights, std::vector<double>, binnedin2d1dfitweightvar1binning)//binning of first var
-  CLASS_MEMBER(HinvWeights, std::vector<double>, binnedin2d1dfitweightvar2binning)//binning of second var
-  CLASS_MEMBER(HinvWeights, bool, do_run2)
-
 
   CLASS_MEMBER(HinvWeights, bool, trg_applied_in_mc)
   CLASS_MEMBER(HinvWeights, bool, do_idiso_tight_weights)
   CLASS_MEMBER(HinvWeights, bool, do_idiso_veto_weights)
   CLASS_MEMBER(HinvWeights, bool, do_w_soup)
   CLASS_MEMBER(HinvWeights, bool, do_w_reweighting)
+  CLASS_MEMBER(HinvWeights, bool, do_ewk_w_reweighting)
   CLASS_MEMBER(HinvWeights, bool, do_dy_soup)
   CLASS_MEMBER(HinvWeights, bool, do_dy_soup_htbinned)
   CLASS_MEMBER(HinvWeights, bool, do_dy_reweighting)
+  CLASS_MEMBER(HinvWeights, bool, do_z_reweighting)
+  CLASS_MEMBER(HinvWeights, bool, do_ewk_dy_reweighting)
   CLASS_MEMBER(HinvWeights, std::string, input_met)
   CLASS_MEMBER(HinvWeights, std::string, input_jet)
-  CLASS_MEMBER(HinvWeights, bool, do_idiso_err)
-  CLASS_MEMBER(HinvWeights, bool, do_idiso_errmuore)
-  CLASS_MEMBER(HinvWeights, bool, do_idiso_errupordown)
   CLASS_MEMBER(HinvWeights, bool, do_lumixs_weights)
   CLASS_MEMBER(HinvWeights, std::string, input_params)
   CLASS_MEMBER(HinvWeights, std::string, sample_name)
-  CLASS_MEMBER(HinvWeights, std::string, trg_weight_file)
-  CLASS_MEMBER(HinvWeights, double, Alumi)
-  CLASS_MEMBER(HinvWeights, double, BClumi)
-  CLASS_MEMBER(HinvWeights, double, Dlumi)
+  CLASS_MEMBER(HinvWeights, std::string, mettrg_weight_file)
+  CLASS_MEMBER(HinvWeights, std::string, mettrg_zmm_weight_file)
 
-  TFile *triggerSF_;
-  std::vector<TH1F*> hist_trigSF_METL1vec;
-  std::vector<TH1F*> hist_trigSF_METHLTvec;
-  std::vector<TH1F*> hist_trigSF_MjjHLTvec;
-  std::vector<TH1F*> hist_trigSF_JetHLTvec;
-  std::vector<TF1*> func_trigSF_METL1vec;
-  std::vector<TF1*> func_trigSF_METHLTvec;
-  std::vector<TF1*> func_trigSF_MjjHLTvec;
-  std::vector<TF1*> func_trigSF_JetHLTvec;
+  // For v_nlo_Reweighting (kfactors.root file in input/scalefactors from MIT group)
+  CLASS_MEMBER(HinvWeights, std::string, kfactors_wjets_file)
+  CLASS_MEMBER(HinvWeights, std::string, kfactors_zjets_file)
+  CLASS_MEMBER(HinvWeights, std::string, kfactors_dyjets_file)
+  CLASS_MEMBER(HinvWeights, std::string, kfactors_file)
+  TFile *kfactors_wjets_;
+  TFile *kfactors_zjets_;
+  TFile *kfactors_dyjets_;
+  TFile *kfactors_;
+  TH1F *hist_kfactors_EWKcorr_W;
+  TH1F *hist_kfactors_WJets_012j_NLO;
+  TH1F *hist_kfactors_EWKcorr_Z;
+  TH1F *hist_kfactors_ZJets_012j_NLO;
+  TH1F *hist_kfactors_vbf_cnc_W;
+  TH1F *hist_kfactors_vbf_cnc_DY;
+  TH1F *hist_kfactors_vbf_cnc_Z;
 
-  std::vector<std::vector<std::vector<TF1*> > > func_trigSF_binnedin2d[7];
-  std::vector<std::string> errLabel;
+  CLASS_MEMBER(HinvWeights, std::string, kFactor_ZToNuNu_pT_Mjj_file)
+  CLASS_MEMBER(HinvWeights, std::string, kFactor_WToLNu_pT_Mjj_file)
+  TFile *kFactor_ZToNuNu_pT_Mjj_;
+  TFile *kFactor_WToLNu_pT_Mjj_;
+  TH2F *hist_kFactors_ewk_Z;
+  TH2F *hist_kFactors_ewk_W;
 
-  TH1F *hist_trigSF_METL1;
-  TH1F *hist_trigSF_METHLT;
-  TH1F *hist_trigSF_MjjHLT;
-  TH1F *hist_trigSF_JetHLT;
-
-  std::vector<TH3F*> hist_trigSF_3D;
+  TFile *mettrigSF_;
+  TFile *mettrigZmmSF_;
+  std::vector<TF1*> func_mettrigSF_;
+  std::vector<TF1*> func_mettrigZmmSF_;
+//   std::vector<TF1*> func_mettrigSF_[2];
+//   std::vector<TF1*> func_mettrigZmmSF_[2];
+//   std::vector<unsigned> trigMjjBins_;
+//   std::vector<double> trigDetajjBins_cc_;
+//   std::vector<double> trigDetajjBins_cf_;
+//   std::vector<double> trigDetajjBins_Zmm_cc_;
+//   std::vector<double> trigDetajjBins_Zmm_cf_;
 
   TH1F *tighteleweight;
   TH1F *tightmuweight;
@@ -81,28 +86,30 @@ class HinvWeights : public ModuleBase {
 
   double lumixsweight;
 
-  std::vector<double> eTight_idisoSF_;
-  std::vector<double> eVeto_idisoDataEff_;
-  std::vector<double> eVeto_idisoMCEff_;
-  std::vector<double> e_gsfidSF_;
-  std::vector<double> e_gsfidDataEff_;
-  std::vector<double> e_gsfidMCEff_;
-  std::vector<double> muTight_idSF_;
-  std::vector<double> muTight_isoSF_;
-  std::vector<double> muVeto_idDataEff_;
-  std::vector<double> muVeto_isoDataEff_;
-  std::vector<double> muVeto_idMCEff_;
-  std::vector<double> muVeto_isoMCEff_;
-  std::vector<double> muTight_idisoSF_;
-  std::vector<double> muVeto_idisoDataEff_;
-  std::vector<double> muVeto_idisoMCEff_;
-  std::vector<double> mu_tkSF_;
-  std::vector<double> mu_tkDataEff_;
+  //[3]=central-up-down
+  std::vector<double> eTight_idisoSF_[3];
+  std::vector<double> e_trigDataEff_[3];
+  std::vector<double> eVeto_idisoDataEff_[3];
+  std::vector<double> eVeto_idisoMCEff_[3];
+  std::vector<double> e_gsfidSF_[3];
+  std::vector<double> e_gsfidDataEff_[3];
+  std::vector<double> e_gsfidMCEff_[3];
+  std::vector<double> muTight_idSF_[3];
+  std::vector<double> muTight_isoSF_[3];
+  std::vector<double> muVeto_idSF_[3];
+  std::vector<double> muVeto_isoSF_[3];
+  std::vector<double> muVeto_idDataEff_[3];
+  std::vector<double> muVeto_isoDataEff_[3];
+  std::vector<double> muVeto_idMCEff_[3];
+  std::vector<double> muVeto_isoMCEff_[3];
+  std::vector<double> mu_tkSF_[3];
 
   std::vector<double> gsf_etabin_;
   std::vector<double> gsf_ptbin_;
   std::vector<double> e_etabin_;
   std::vector<double> e_ptbin_;
+  std::vector<double> e_etatrig_;
+  std::vector<double> e_pttrig_;
 
   std::vector<double> tk_etabin_;
   std::vector<double> tk_ptbin_;
@@ -143,13 +150,12 @@ class HinvWeights : public ModuleBase {
   unsigned findPtEtaBin(const double & pt, const double & eta, const std::vector<double> & ptbin, const std::vector<double> & etabin);
 
   void fillVector(const std::string & aFileName, 
-		  const unsigned nPtBins,
-		  const unsigned nEtaBins,
-		  std::vector<double> & aVector,
-		  std::vector<double> & ptbin,
-		  std::vector<double> & etabin);
-
-  void fillVectorError(const std::string & aFileName, std::vector<double> & aVector, bool upordown);
+                  const unsigned nPtBins,
+                  const unsigned nEtaBins,
+                  std::vector<double> aVector[3],
+                  std::vector<double> & ptbin,
+                  std::vector<double> & etabin,
+		  const bool protect);
 
   double nloReweighting(const double & aMjj, const double & aYstar);
 
@@ -157,7 +163,5 @@ class HinvWeights : public ModuleBase {
 };
 
 }
-
 #undef MEMBER_NP
-
 #endif

@@ -10,6 +10,21 @@ void SetDoDY(ic::mc mc, HinvWeights* xsWeights){
   long double TF_oneMinusAll,TF_htBin1,TF_htBin2,TF_htBin3,TF_htBin4;
   long double IY_Inclusive,IY_htBin1,IY_htBin2,IY_htBin3,IY_htBin4;
 
+  if (mc == mc::summer16_80X){// NOT USED
+    //XS_MC_DYJetsToLL and 1 2 3 4
+    TF_oneMinusAll = 0.739828;
+    TF_htBin1      = 0.175356;
+    TF_htBin2      = 0.0573421;
+    TF_htBin3      = 0.0179172;
+    TF_htBin4      = 0.00955701;
+
+    //EVT_MC_DYJetsToLL and 1 2 3 4
+    IY_Inclusive   = 49877138;
+    IY_htBin1      = 65485168;
+    IY_htBin2      = 19695514;
+    IY_htBin3      = 5753813;
+    IY_htBin4      = 4101383;
+  }
   if (mc == mc::spring16_80X){
     //XS_MC_DYJetsToLL and 1 2 3 4
     TF_oneMinusAll = 0.739828;
@@ -58,7 +73,11 @@ void SetDoDY(ic::mc mc, HinvWeights* xsWeights){
     //else{xsWeights.SetDYInputYields(30459503.0, 24045248.0, 21852156.0, 11015445.0, 6402827.0);}
   }
 
-  xsWeights->set_do_dy_soup(true);
+  if (mc == mc::summer16_80X){
+    xsWeights->set_do_dy_soup(false);
+  } else {
+      xsWeights->set_do_dy_soup(true);
+  }
   xsWeights->set_do_dy_reweighting(false);
   xsWeights->SetDYTargetFractions(TF_oneMinusAll,TF_htBin1,TF_htBin2,TF_htBin3,TF_htBin4);
   xsWeights->SetDYInputYields(IY_Inclusive,IY_htBin1,IY_htBin2,IY_htBin3,IY_htBin4);

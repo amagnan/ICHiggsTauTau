@@ -1,0 +1,22 @@
+n_jets_csv2medium(5,0,5);n_{bjets};Events
+m_mumu(12,60.,120.)	;m_{#mu#mu};Events
+pt_mumu(25,0.,750.)	;p_{T}^{#mu#mu};Events
+mu1_pt(25,20.,520.)	;p_{T}(lead muon) [GeV];Events
+mu1_eta(30,-2.5,2.5)	;#eta(lead muon);Events
+mu2_pt(13,15.,275.)	;p_{T}(sublead muon) [GeV];Events
+mu2_eta(30,-2.5,2.5)	;#eta(sublead muon);Events 
+n_vertices(60,0,60)	;n_{vtx};Events
+jet1_pt(40,80.,680.)	;p_{T}^{j1} [GeV];Events
+jet2_pt(18,40.,310.)	;p_{T}^{j2} [GeV];Events
+jet1_eta(25,-5,5)	;#eta^{j1};Events
+jet2_eta(25,-5,5)	;#eta^{j2};Events
+met(20,0.,400.)	;MET [GeV];Events
+metnomuons(35,250.,950.)	;E_{T,no-#mu}^{miss} [GeV];Events
+dijet_M(40,1300.,5300.)	;m_{jj} [GeV];Events
+dijet_dphi(15,0.,1.5)	;#Delta#phi_{jj};Events
+dijet_deta(10,4.0,8.0)	;#Delta#eta_{jj};Events
+dijet_sumeta(20,-5,5)	;#eta_{j1}+#eta_{j2};Events
+fourjetsmetnomu_mindphi(20,0.5,3.1416)	;#Delta#phi(E_{T,no-#mu}^{miss},j);Events
+central_tag_eta(28,-4.,4.)	;Central tag jet #eta;Events
+forward_tag_eta(25,-5.,5.)	;Forward tag jet #eta;Events
+fourjetsmetnomu_mindphi:dijet_M(24,800.,2000.,20,1.,3.)	;m_{jj} [GeV];#Delta#phi(E_{T}^{miss},j);Events

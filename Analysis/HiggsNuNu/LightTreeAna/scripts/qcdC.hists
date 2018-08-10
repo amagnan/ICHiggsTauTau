@@ -1,0 +1,4 @@
+dijet_M(25,0.,5000.)	;M_{jj} (GeV);Events
+metnomuons(10,100.,200.)	;E_{T,no-#mu}^{miss} (GeV);Events
+ht30(30,500,2000)	;H_{T}^{p_{T}^{j}>30 GeV} (GeV);Events
+jet1_eta(94,-4.7,4.7)	;#eta^{j1} (GeV);Events

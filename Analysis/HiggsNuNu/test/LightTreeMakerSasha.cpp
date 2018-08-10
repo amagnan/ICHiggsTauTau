@@ -30,7 +30,7 @@
 #include "UserCode/ICHiggsTauTau/Analysis/Modules/interface/LumiMask.h"
 
 #include "UserCode/ICHiggsTauTau/Analysis/HiggsNuNu/interface/HinvDataTriggerFilter.h"
-#include "UserCode/ICHiggsTauTau/Analysis/HiggsNuNu/interface/HinvWeights.h"
+#include "UserCode/ICHiggsTauTau/Analysis/HiggsNuNu/interface/HinvWeightsOld.h"
 #include "UserCode/ICHiggsTauTau/Analysis/HiggsNuNu/interface/HinvWDecay.h"
 #include "UserCode/ICHiggsTauTau/Analysis/HiggsNuNu/interface/HinvZDecay.h"
 #include "UserCode/ICHiggsTauTau/Analysis/HiggsNuNu/interface/ModifyMet.h"
@@ -686,7 +686,7 @@ int main(int argc, char* argv[]){
   // Weight Modules
   // ------------------------------------------------------------------------------------  
   
-  HinvWeights hinvWeights = HinvWeights("HinvWeights")
+  HinvWeightsOld hinvWeights = HinvWeightsOld("HinvWeights")
     .set_era(era)
     .set_mc(mc)
     .set_save_weights(true)
@@ -695,29 +695,18 @@ int main(int argc, char* argv[]){
     .set_trg_applied_in_mc(false)
     .set_do_idiso_tight_weights(false)
     .set_do_idiso_veto_weights(false)
-    .set_do_idiso_err(doidisoerr)
-    .set_do_idiso_errupordown(doidisoerrupordown)
-    .set_do_idiso_errmuore(doidisoerrmuore)
     .set_fs(fs)
     .set_input_met("metNoMuons");
   if (!is_data) {
     hinvWeights.set_do_trg_weights(dotrgeff)
-      .set_do_3dtrg_weights(do3dtrgeff)
-      .set_do_1dparkedtrg_weights(do1dparkedtrgeff)
-      .set_do_fitted1dparkedtrg_weights(dofitted1dparkedtrgeff)
       .set_do_binnedin2d1dfittedtrg_weights(dobinnedin2d1dtrgeff)
       .set_trg_weight_file(trg_weight_file)
       .set_trg_applied_in_mc(true);
-    if(do3dtrgeff){
-      hinvWeights.set_Alumi(0.889)
-	.set_BClumi(11.023)
-	.set_Dlumi(7.315);
-    }
     hinvWeights.set_do_idiso_veto_weights(false);
     hinvWeights.set_do_idiso_tight_weights(false);
   }
 
-  HinvWeights xsWeights = HinvWeights("XSWeights")
+  HinvWeightsOld xsWeights = HinvWeightsOld("XSWeights")
     .set_era(era)
     .set_mc(mc)
     .set_save_weights(false)

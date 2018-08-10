@@ -1,0 +1,10 @@
+m_ee(12,60.,120.)	;m_{ee};Events
+metnoelectrons(10,200.,450.)	;E_{T,no-el}^{miss} (GeV);Events
+dijet_M(22,800.,3000.)	;M_{jj} (GeV);Events
+dijet_deta(10,3.6,5.5)	;#Delta#eta_{jj};Events
+fourjetsmetnoel_mindphi(20,0.5,3.1416)	;#Delta#phi(E_{T,no-el}^{miss},j);Events
+nvetotaus(3,0,3)        ;n_{veto#tau};Events
+n_jets_csv2medium(5,0,5);n_{bjets};Events
+dijet_dphi(20,0.,3.1416)	;#Delta#phi_{jj};Events
+central_tag_eta(25,-5.,5.)	;Central tag jet #eta;Events
+forward_tag_eta(25,-5.,5.)	;Forward tag jet #eta;Events

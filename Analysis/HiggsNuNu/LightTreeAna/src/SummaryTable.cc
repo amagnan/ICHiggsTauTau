@@ -41,8 +41,13 @@ namespace ic{
 	dir=file->GetDirectory(dirs_[idir].c_str());
       }
       dir->cd();
+      if (shape_.size()==0) {
+	std::cout << " Error! no shape saved, size 0..." << std::endl;
+	exit(1);
+      }
       TH1F* histo = (TH1F*)dir->Get(shape_[0].name().c_str());
-      std::cout<<dirs_[idir]<<": "<<Integral(histo)<<std::endl;
+      if (histo) std::cout<<dirs_[idir]<<": "<<Integral(histo)<<std::endl;
+      else std::cout << " Warning, histo " << shape_[0].name() << " not found." << std::endl;
     }
     return 0;
   };
